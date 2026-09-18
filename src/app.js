@@ -1,0 +1,96 @@
+require('dotenv').config();
+const path = require('path');
+const crypto = require('crypto');
+const express = require('express');
+const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+
+const pool = require('./config/db');
+const { buildHelmet, globalLimiter } = require('./middleware/security');
+
+const publicRoutes = require('./routes/public');
+const adminRoutes = require('./routes/admin');
+
+const app = express();
+
+// 部署在 Cloudflare / Nginx 反代之后，必须信任第一跳代理，
+// 否则 req.ip、req.secure、限流用的 IP 全部会是反代自己的地址——限流形同虚设。
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '..', 'views'));
+
+app.use(compression());
+
+// 每个请求生成一个 CSP nonce，供内联 <script>/<style> 使用——
+// 不给整站开 'unsafe-inline'，同时又不强求把每一行样式都拆成外部文件。
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+app.use(buildHelmet());
+app.use(globalLimiter);
+
+app.use(express.urlencoded({ extended: true, limit: '200kb' }));
+app.use(express.json({ limit: '200kb' }));
+app.use(cookieParser()); // csrf-csrf 用双重提交 Cookie 模式，必须能读到 req.cookies
+
+app.use(
+  session({
+    store: new pgSession({ pool, tableName: 'session', createTableIfMissing: true }),
+    name: 'blog_blue_sid',
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 天
+    },
+  })
+);
+
+app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '7d' }));
+app.use('/uploads', express.static(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), { maxAge: '30d' }));
+
+// 全站通用的模板变量
+app.use((req, res, next) => {
+  res.locals.siteName = process.env.SITE_NAME || 'blog.blue';
+  res.locals.siteDescription = process.env.SITE_DESCRIPTION || '';
+  res.locals.siteAuthor = process.env.SITE_AUTHOR || '';
+  res.locals.siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');
+  res.locals.currentPath = req.path;
+  next();
+});
+
+app.use('/admin', adminRoutes);
+app.use('/', publicRoutes);
+
+// 404
+app.use((req, res) => {
+  res.status(404).render('404');
+});
+
+// 统一错误处理：生产环境绝不把 err.stack 吐给用户
+app.use((err, req, res, next) => {
+  console.error('[error]', err);
+  const status = err.status || 500;
+  res.status(status);
+  if (req.path.startsWith('/admin')) {
+    res.render('admin/error', { message: status === 500 ? '服务器开小差了' : err.message });
+  } else {
+    res.render('404', { serverError: status === 500 });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`[blog.blue] 正在监听 http://127.0.0.1:${PORT}`);
+});
+
+module.exports = app;

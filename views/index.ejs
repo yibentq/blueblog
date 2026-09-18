@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<%- include('partials/head') %>
+<body>
+  <%- include('partials/header') %>
+  <main>
+    <% if (tagName) { %>
+      <div class="page-heading">
+        <h1>标签：<%= tagName %></h1>
+        <p><a href="/">&larr; 返回全部文章</a></p>
+      </div>
+    <% } %>
+
+    <% if (posts.length === 0) { %>
+      <p style="color: var(--line-white-dim)">这里还没有文章。</p>
+    <% } %>
+
+    <% posts.forEach(function(post) { %>
+      <article class="post-card <%= post.is_pinned ? 'pinned' : '' %>">
+        <% if (post.is_pinned) { %><p class="pinned-label">置顶</p><% } %>
+        <h2><a href="/p/<%= post.slug %>"><%= post.title %></a></h2>
+        <% if (post.summary) { %><p class="summary"><%= post.summary %></p><% } %>
+        <div class="post-meta">
+          <span><%= new Date(post.published_at).toISOString().slice(0,10).replace(/-/g, '.') %></span>
+          <span><%= post.reading_minutes %> 分钟阅读</span>
+          <span><%= post.view_count %> 次浏览</span>
+        </div>
+      </article>
+    <% }) %>
+
+    <% if (totalPages > 1) { %>
+      <div class="pagination">
+        <% if (page > 1) { %>
+          <a href="<%= basePath %>?page=<%= page - 1 %>">&larr; 上一页</a>
+        <% } else { %><span class="disabled">&larr; 上一页</span><% } %>
+        <span>第 <%= page %> / <%= totalPages %> 页</span>
+        <% if (page < totalPages) { %>
+          <a href="<%= basePath %>?page=<%= page + 1 %>">下一页 &rarr;</a>
+        <% } else { %><span class="disabled">下一页 &rarr;</span><% } %>
+      </div>
+    <% } %>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

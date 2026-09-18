@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<%- include('partials/head') %>
+<body>
+  <%- include('partials/header') %>
+  <main>
+    <article class="post-article">
+      <header class="article-head">
+        <h1><%= post.title %></h1>
+        <div class="article-meta">
+          <span><%= new Date(post.published_at).toISOString().slice(0,10).replace(/-/g, '.') %></span>
+          <span><%= post.reading_minutes %> 分钟阅读</span>
+          <span><%= post.view_count %> 次浏览</span>
+        </div>
+      </header>
+      <div class="article-body"><%- post.content_html %></div>
+      <% if (tags.length) { %>
+        <div class="article-tags">
+          <% tags.forEach(function(t) { %><a href="/tag/<%= t.slug %>">#<%= t.name %></a><% }) %>
+        </div>
+      <% } %>
+    </article>
+
+    <% if (commentsEnabled) { %>
+      <section class="comments">
+        <h2><%= comments.length %> 条评论</h2>
+        <% comments.forEach(function(c) { %>
+          <div class="comment">
+            <p class="comment-meta"><%= c.author_name %> / <%= new Date(c.created_at).toISOString().slice(0,10) %></p>
+            <p><%= c.content %></p>
+          </div>
+        <% }) %>
+
+        <% if (typeof query !== 'undefined' && query.comment === 'pending') { %>
+          <p class="notice">评论已提交，审核通过后会显示在这里。</p>
+        <% } %>
+
+        <form class="comment-form" method="post" action="/p/<%= post.slug %>/comments">
+          <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off">
+          <input type="text" name="author_name" placeholder="昵称" required maxlength="80">
+          <input type="email" name="author_email" placeholder="邮箱（可选，不会公开）" maxlength="255">
+          <textarea name="content" rows="4" placeholder="说点什么" required maxlength="2000"></textarea>
+          <button class="btn" type="submit">发送评论</button>
+        </form>
+      </section>
+    <% } %>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

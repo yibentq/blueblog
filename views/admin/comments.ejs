@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>评论审核 · blog.blue 后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <%- include('../partials/admin-nav') %>
+    <div class="admin-main">
+      <h1>待审核评论</h1>
+      <% if (pending.length === 0) { %>
+        <p class="mono" style="color:var(--a-text-dim)">没有待审核的评论</p>
+      <% } %>
+      <% pending.forEach(function(c) { %>
+        <table style="margin-bottom:1.2rem">
+          <tr>
+            <td style="width:70%">
+              <p class="mono" style="color:var(--a-text-dim);font-size:0.75rem;margin:0 0 0.4rem">
+                <%= c.author_name %> · 发表于《<a href="/p/<%= c.post_slug %>" target="_blank"><%= c.post_title %></a>》· <%= new Date(c.created_at).toISOString().slice(0,16).replace('T',' ') %>
+              </p>
+              <p style="margin:0"><%= c.content %></p>
+            </td>
+            <td class="row-actions">
+              <form method="post" action="/admin/comments/<%= c.id %>/approve" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" style="color:var(--a-ok)">通过</button>
+              </form>
+              &nbsp;
+              <form method="post" action="/admin/comments/<%= c.id %>/spam" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit">标记垃圾</button>
+              </form>
+            </td>
+          </tr>
+        </table>
+      <% }) %>
+    </div>
+  </div>
+</body>
+</html>

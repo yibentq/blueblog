@@ -1,0 +1,14 @@
+<div class="admin-sidebar">
+  <a class="brand" href="/admin">blog.blue</a>
+  <nav>
+    <a href="/admin" class="<%= currentPath === '/admin' ? 'active' : '' %>">文章</a>
+    <a href="/admin/posts/new" class="<%= currentPath === '/admin/posts/new' ? 'active' : '' %>">写新文章</a>
+    <a href="/admin/comments" class="<%= currentPath === '/admin/comments' ? 'active' : '' %>">评论审核</a>
+    <a href="/admin/settings" class="<%= currentPath === '/admin/settings' ? 'active' : '' %>">设置</a>
+    <a href="/" target="_blank" rel="noopener">查看站点 &rarr;</a>
+  </nav>
+  <form method="post" action="/admin/logout">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <button class="logout" type="submit">退出登录</button>
+  </form>
+</div>

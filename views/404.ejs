@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<%- include('partials/head') %>
+<body>
+  <%- include('partials/header') %>
+  <main>
+    <div class="not-found">
+      <p class="code"><%= typeof serverError !== 'undefined' && serverError ? '500' : '404' %></p>
+      <h1><%= typeof serverError !== 'undefined' && serverError ? '服务器开小差了' : '这里什么都没有' %></h1>
+      <p><a href="/">&larr; 回到首页</a></p>
+    </div>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

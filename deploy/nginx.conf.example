@@ -1,0 +1,67 @@
+# /etc/nginx/sites-available/blog.blue
+# 假设站点在 Cloudflare 后面（橙云开启），真实证书由 Cloudflare 边缘终止，
+# 源站这里用 Cloudflare Origin Certificate 做源站到边缘的加密（Full Strict 模式）。
+
+server {
+    listen 80;
+    server_name blog.blue www.blog.blue;
+    return 301 https://blog.blue$request_uri; # 统一跳 https + 去掉 www
+}
+
+server {
+    listen 443 ssl http2;
+    server_name www.blog.blue;
+    ssl_certificate     /etc/nginx/ssl/blog.blue.pem;      # Cloudflare Origin Certificate
+    ssl_certificate_key /etc/nginx/ssl/blog.blue.key;
+    return 301 https://blog.blue$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name blog.blue;
+
+    ssl_certificate     /etc/nginx/ssl/blog.blue.pem;
+    ssl_certificate_key /etc/nginx/ssl/blog.blue.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # 真实客户端 IP 由 Cloudflare 通过 CF-Connecting-IP 传递，
+    # 用 ngx_http_realip_module 还原，否则应用层拿到的全是 Cloudflare 边缘节点 IP，限流会全部误伤。
+    set_real_ip_from 173.245.48.0/20;
+    set_real_ip_from 103.21.244.0/22;
+    set_real_ip_from 103.22.200.0/22;
+    set_real_ip_from 103.31.4.0/22;
+    set_real_ip_from 141.101.64.0/18;
+    set_real_ip_from 108.162.192.0/18;
+    set_real_ip_from 190.93.240.0/20;
+    set_real_ip_from 188.114.96.0/20;
+    set_real_ip_from 197.234.240.0/22;
+    set_real_ip_from 198.41.128.0/17;
+    set_real_ip_from 162.158.0.0/15;
+    set_real_ip_from 104.16.0.0/13;
+    set_real_ip_from 104.24.0.0/14;
+    set_real_ip_from 172.64.0.0/13;
+    set_real_ip_from 131.0.72.0/22;
+    real_ip_header CF-Connecting-IP;
+
+    client_max_body_size 10m; # 略大于应用层 MAX_UPLOAD_MB，给 multipart 边界留余量
+
+    # 上传的图片直接由 Nginx 出，不经过 Node —— 静态文件走应用层是资源浪费
+    location /uploads/ {
+        alias /var/www/blog-blue/uploads/;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+    }
+
+    access_log /var/log/nginx/blog-blue.access.log;
+    error_log  /var/log/nginx/blog-blue.error.log;
+}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文章管理 · blog.blue 后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <%- include('../partials/admin-nav') %>
+    <div class="admin-main">
+      <h1>文章</h1>
+      <% if (pendingCount > 0) { %>
+        <div class="alert-banner"><%= pendingCount %> 条评论待审核 —— <a href="/admin/comments">去处理</a></div>
+      <% } %>
+      <p><a class="btn" href="/admin/posts/new">+ 写新文章</a></p>
+      <table>
+        <thead>
+          <tr><th>标题</th><th>状态</th><th>浏览</th><th>更新时间</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% posts.forEach(function(p) { %>
+            <tr>
+              <td><a href="/admin/posts/<%= p.id %>/edit"><%= p.title %></a></td>
+              <td><span class="badge <%= p.status %>"><%= ({draft:'草稿',published:'已发布',archived:'已归档'})[p.status] %></span></td>
+              <td class="mono"><%= p.view_count %></td>
+              <td class="mono"><%= new Date(p.updated_at).toISOString().slice(0,16).replace('T',' ') %></td>
+              <td class="row-actions">
+                <form method="post" action="/admin/posts/<%= p.id %>/delete" onsubmit="return confirm('确定删除这篇文章？不可恢复。');" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit">删除</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+          <% if (posts.length === 0) { %>
+            <tr><td colspan="5" class="mono" style="color:var(--a-text-dim)">还没有文章</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+      <% if (totalPages > 1) { %>
+        <p class="mono" style="margin-top:1rem">
+          <% if (page > 1) { %><a href="?page=<%= page - 1 %>">&larr; 上一页</a><% } %>
+          &nbsp;第 <%= page %> / <%= totalPages %> 页&nbsp;
+          <% if (page < totalPages) { %><a href="?page=<%= page + 1 %>">下一页 &rarr;</a><% } %>
+        </p>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>
