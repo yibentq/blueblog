@@ -48,10 +48,23 @@ read -rp "后台管理员邮箱: " ADMIN_EMAIL
 
 # 密码和密钥全部脚本内随机生成，不需要你手动输入、也不会回显到终端历史——
 # 生成后一次性打印在最终摘要里，自己截图存好。
-DB_PASSWORD=$(openssl rand -hex 16)
-ADMIN_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=' | head -c 16)
-SESSION_SECRET=$(openssl rand -hex 32)
-CSRF_SECRET=$(openssl rand -hex 32)
+#
+# 如果 .env 已经存在（比如上次部署中途失败，数据库和管理员账号已经用旧密码建好了），
+# 复用旧值——不然重新生成一套新密码写进 .env，但数据库里存的还是旧密码的哈希，会导致登录不了。
+if [[ -f "$APP_DIR/.env" ]]; then
+  echo ">> 检测到已有 .env，复用其中的密码/密钥，不重新生成..."
+  DB_PASSWORD=$(grep -oP '(?<=blog_blue:)[^@]+' "$APP_DIR/.env" | head -1)
+  ADMIN_PASSWORD=$(grep -oP '(?<=^ADMIN_PASSWORD=).*' "$APP_DIR/.env")
+  SESSION_SECRET=$(grep -oP '(?<=^SESSION_SECRET=).*' "$APP_DIR/.env")
+  CSRF_SECRET=$(grep -oP '(?<=^CSRF_SECRET=).*' "$APP_DIR/.env")
+  SITE_LAUNCH_DATE=$(grep -oP '(?<=^SITE_LAUNCH_DATE=).*' "$APP_DIR/.env")
+fi
+DB_PASSWORD=${DB_PASSWORD:-$(openssl rand -hex 16)}
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-$(openssl rand -base64 18 | tr -d '/+=' | head -c 16)}
+SESSION_SECRET=${SESSION_SECRET:-$(openssl rand -hex 32)}
+CSRF_SECRET=${CSRF_SECRET:-$(openssl rand -hex 32)}
+# 建站时间：第一次部署时"现在"就是真实的建站时刻；重跑脚本时上面已经从旧 .env 复用了，不会被重置成 0 天
+SITE_LAUNCH_DATE=${SITE_LAUNCH_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
 
 echo ""
 echo "配置确认："
@@ -160,6 +173,7 @@ ADMIN_EMAIL=${ADMIN_EMAIL}
 SITE_NAME=blog.blue
 SITE_DESCRIPTION=一个只做一件事的博客
 SITE_AUTHOR=AAAduo
+SITE_LAUNCH_DATE=${SITE_LAUNCH_DATE}
 
 UPLOAD_DIR=${APP_DIR}/uploads
 MAX_UPLOAD_MB=8
@@ -181,7 +195,10 @@ echo ">> 用 PM2 启动应用..."
 su - "$APP_USER" -c "cd $APP_DIR && pm2 delete blog-blue 2>/dev/null || true"
 su - "$APP_USER" -c "cd $APP_DIR && pm2 start ecosystem.config.js --env production"
 su - "$APP_USER" -c "pm2 save"
-env PATH=$PATH:/usr/bin pm2 startup systemd -u "$APP_USER" --hp "/home/$APP_USER" | tail -1 | bash
+# 新版 PM2（5.x+）会自己执行 systemctl enable，不再需要把输出的命令再 pipe 给 bash 执行——
+# 旧版脚本这里的写法在新版下会因为输出格式变了而报错，还会被 set -e 直接中断整个部署。
+# 这里用 || true 兜底：即使这步意外失败，也只是开机不自启，不影响这次部署本身。
+env PATH=$PATH:/usr/bin pm2 startup systemd -u "$APP_USER" --hp "/home/$APP_USER" || true
 
 # ---------- 13. Nginx 站点配置 ----------
 

@@ -64,6 +64,7 @@ app.use((req, res, next) => {
   res.locals.siteDescription = process.env.SITE_DESCRIPTION || '';
   res.locals.siteAuthor = process.env.SITE_AUTHOR || '';
   res.locals.siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');
+  res.locals.siteLaunchDate = process.env.SITE_LAUNCH_DATE || new Date().toISOString();
   res.locals.currentPath = req.path;
   next();
 });

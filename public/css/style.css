@@ -208,8 +208,13 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 /* ---------- 页脚 ---------- */
 
 footer { border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
-footer .footer-inner { max-width: var(--max-w); margin: 0 auto; font-family: var(--font-mono); font-size: 0.75rem; color: var(--line-white-dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+footer .footer-inner {
+  max-width: var(--max-w); margin: 0 auto; font-family: var(--font-mono); font-size: 0.75rem;
+  color: var(--line-white-dim); display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem;
+}
+footer .footer-inner .footer-links { display: flex; gap: 0.5rem; }
 footer a { color: var(--line-white-dim); }
+#site-uptime { color: var(--brass); }
 
 /* ---------- 404 ---------- */
 
