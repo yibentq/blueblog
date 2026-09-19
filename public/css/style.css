@@ -28,6 +28,12 @@
 
   --max-w: 42rem;
   --radius: 2px;
+  --paper-grain: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNDAnIGhlaWdodD0nMTQwJz4KICA8ZmlsdGVyIGlkPSduJz4KICAgIDxmZVR1cmJ1bGVuY2UgdHlwZT0nZnJhY3RhbE5vaXNlJyBiYXNlRnJlcXVlbmN5PScwLjg1JyBudW1PY3RhdmVzPScyJyBzdGl0Y2hUaWxlcz0nc3RpdGNoJy8+CiAgICA8ZmVDb2xvck1hdHJpeCB0eXBlPSdtYXRyaXgnIHZhbHVlcz0nMCAwIDAgMCAwICAwIDAgMCAwIDAgIDAgMCAwIDAgMCAgMCAwIDAgMC4wMzUgMCcvPgogIDwvZmlsdGVyPgogIDxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbHRlcj0ndXJsKCNuKScvPgo8L3N2Zz4K");
+  /* 名片质感的多层阴影：贴近纸面的一层浅影 + 悬浮感的大范围软影 + 极细的烫金描边光 */
+  --card-shadow:
+    0 1px 1px rgba(11, 31, 53, 0.18),
+    0 18px 40px -14px rgba(6, 20, 38, 0.55),
+    0 0 0 1px rgba(234, 240, 248, 0.04);
 }
 
 * { box-sizing: border-box; }
@@ -41,9 +47,11 @@ body {
   font-size: 17px;
   line-height: 1.7;
   background-image:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(53, 116, 176, 0.22), transparent 70%),
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-size: 100% 100%, 28px 28px, 28px 28px;
+  background-attachment: fixed, scroll, scroll;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -60,8 +68,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ---------- 顶部：仿"图纸标题栏" ---------- */
 
 .titleblock {
+  position: relative;
   border-bottom: 1px solid var(--line-white-dim);
   padding: 1.4rem 1.5rem;
+}
+.titleblock::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, var(--brass) 0%, rgba(199, 154, 69, 0) 18%);
 }
 .titleblock-inner {
   max-width: var(--max-w);
@@ -110,11 +124,15 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
 .post-card {
   position: relative;
-  background: var(--paper);
+  background-color: var(--paper);
+  background-image: var(--paper-grain);
   color: var(--ink-on-paper);
   border-radius: var(--radius);
-  padding: 1.6rem 1.7rem;
-  margin-bottom: 1.1rem;
+  padding: 1.7rem 1.8rem;
+  margin-bottom: 1.3rem;
+  box-shadow: var(--card-shadow);
+  outline: 1px solid rgba(199, 154, 69, 0.22);
+  outline-offset: -9px;
 }
 /* 角标裁切——呼应蓝图图框的裁角，只在卡片上用一次，不到处重复 */
 .post-card::before, .post-card::after {
@@ -126,7 +144,7 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 .post-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
 .post-card::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
 
-.post-card.pinned { border-left: 3px solid var(--brass); padding-left: calc(1.7rem - 3px); }
+.post-card.pinned { border-left: 3px solid var(--brass); padding-left: calc(1.8rem - 3px); }
 .pinned-label {
   font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.03em;
   color: var(--brass-dim); margin: 0 0 0.5rem;
@@ -135,6 +153,16 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 .post-card h2 { margin: 0 0 0.5rem; font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; line-height: 1.3; }
 .post-card h2 a { color: var(--ink-on-paper); text-decoration: none; }
 .post-card h2 a:hover { color: var(--blue-700); }
+@media (prefers-reduced-motion: no-preference) {
+  .post-card { transition: box-shadow .2s ease, transform .2s ease; }
+  .post-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 2px rgba(11, 31, 53, 0.2),
+      0 26px 48px -16px rgba(6, 20, 38, 0.6),
+      0 0 0 1px rgba(199, 154, 69, 0.12);
+  }
+}
 .post-card p.summary { margin: 0 0 0.8rem; color: var(--ink-on-paper-dim); font-size: 0.96rem; }
 
 .post-meta {
@@ -152,9 +180,32 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
 /* ---------- 文章详情页 ---------- */
 
-.post-article { background: var(--paper); color: var(--ink-on-paper); border-radius: var(--radius); padding: 2.2rem 2rem 2.6rem; }
-.post-article header.article-head { margin-bottom: 1.8rem; padding-bottom: 1.4rem; border-bottom: 1px dashed rgba(22,35,58,0.25); }
-.post-article header.article-head h1 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 600; line-height: 1.28; margin: 0 0 0.7rem; }
+.post-article {
+  position: relative;
+  background-color: var(--paper);
+  background-image: var(--paper-grain);
+  color: var(--ink-on-paper);
+  border-radius: var(--radius);
+  padding: 2.6rem 2.4rem 3rem;
+  box-shadow: var(--card-shadow);
+  outline: 1px solid rgba(199, 154, 69, 0.24);
+  outline-offset: -11px;
+}
+.post-article header.article-head {
+  position: relative;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+}
+.post-article header.article-head::after {
+  content: '';
+  position: absolute; left: 0; bottom: 0;
+  width: 72px; height: 3px;
+  background: linear-gradient(90deg, var(--brass), rgba(199, 154, 69, 0));
+}
+.post-article header.article-head h1 {
+  font-family: var(--font-display); font-size: 1.95rem; font-weight: 600; line-height: 1.26; margin: 0 0 0.75rem;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55); /* 极浅的凸印感——名片烫印标题常有的微光边 */
+}
 .article-meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-on-paper-dim); display: flex; flex-wrap: wrap; gap: 1rem; }
 
 .article-body { font-size: 1.06rem; }
@@ -165,8 +216,15 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 .article-body a:hover { color: var(--brass-dim); }
 .article-body img { max-width: 100%; border-radius: var(--radius); }
 .article-body blockquote {
-  margin: 1.3rem 0; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--blue-700);
+  position: relative;
+  margin: 1.6rem 0; padding: 0.3rem 0 0.3rem 1.5rem; border-left: 3px solid var(--blue-700);
   color: var(--ink-on-paper-dim); font-style: italic;
+}
+.article-body blockquote::before {
+  content: '"';
+  position: absolute; left: -0.15rem; top: -0.6rem;
+  font-family: var(--font-display); font-size: 2.6rem; font-style: normal;
+  color: var(--brass); opacity: 0.5; line-height: 1;
 }
 .article-body code {
   font-family: var(--font-mono); font-size: 0.88em; background: var(--paper-dim); padding: 0.15em 0.35em; border-radius: 2px;
@@ -207,7 +265,12 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
 /* ---------- 页脚 ---------- */
 
-footer { border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
+footer { position: relative; border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
+footer::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: -1px; height: 1px;
+  background: linear-gradient(90deg, var(--brass) 0%, rgba(199, 154, 69, 0) 18%);
+}
 footer .footer-inner {
   max-width: var(--max-w); margin: 0 auto; font-family: var(--font-mono); font-size: 0.75rem;
   color: var(--line-white-dim); display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem;
@@ -224,5 +287,6 @@ footer a { color: var(--line-white-dim); }
 
 @media (max-width: 640px) {
   .titleblock-inner { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
-  .post-article { padding: 1.6rem 1.3rem; }
+  .post-article { padding: 1.8rem 1.4rem 2.2rem; outline-offset: -7px; }
+  .post-card { outline-offset: -6px; }
 }
