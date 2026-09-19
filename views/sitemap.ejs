@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<%- include('partials/head') %>
+<body>
+  <%- include('partials/header') %>
+  <main class="sitemap-page">
+    <div class="page-heading">
+      <h1>站点地图</h1>
+      <p>全部 <%= totalCount %> 篇文章，按发布年份归档。给爬虫看的版本在 <a href="/sitemap.xml">sitemap.xml</a>。</p>
+    </div>
+
+    <% if (tags.length) { %>
+      <section class="sitemap-tags">
+        <h2>按标签</h2>
+        <div class="tag-index">
+          <% tags.forEach(function(t) { %>
+            <a href="/tag/<%= t.slug %>" class="tag-index-item" style="font-size: <%= Math.min(1.5, 0.85 + t.post_count * 0.08) %>rem">
+              #<%= t.name %><span class="tag-count"><%= t.post_count %></span>
+            </a>
+          <% }) %>
+        </div>
+      </section>
+    <% } %>
+
+    <% if (years.length === 0) { %>
+      <p style="color: var(--line-white-dim)">还没有发布任何文章。</p>
+    <% } %>
+
+    <% let counter = totalCount; %>
+    <% years.forEach(function(group) { %>
+      <section class="sitemap-year">
+        <h2 class="sitemap-year-label">
+          <span class="sitemap-year-num"><%= group.year %></span>
+          <span class="sitemap-year-count"><%= group.posts.length %> 篇</span>
+        </h2>
+        <ol class="sitemap-list">
+          <% group.posts.forEach(function(p) { %>
+            <li>
+              <span class="sitemap-no">NO.<%= String(counter--).padStart(3, '0') %></span>
+              <a href="/p/<%= p.slug %>"><%= p.title %></a>
+              <span class="sitemap-date"><%= new Date(p.published_at).toISOString().slice(0,10).replace(/-/g, '.') %></span>
+            </li>
+          <% }) %>
+        </ol>
+      </section>
+    <% }) %>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

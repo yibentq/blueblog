@@ -119,6 +119,32 @@ router.get('/feed.xml', async (req, res, next) => {
 });
 
 // sitemap.xml —— 搜索引擎收录的基础设施，静态站也不该缺
+// 人看的站点地图——按年份分组全部文章 + 标签索引，蓝图"图纸目录"风格。
+// 和下面的 sitemap.xml 不是一回事：那个是给爬虫的，这个是给访客/你自己回顾归档用的。
+router.get('/sitemap', async (req, res, next) => {
+  try {
+    const [posts, tags] = await Promise.all([
+      postModel.listAllPublishedForSitemap(),
+      tagModel.listAll(),
+    ]);
+
+    const byYear = new Map();
+    for (const p of posts) {
+      const year = new Date(p.published_at).getFullYear();
+      if (!byYear.has(year)) byYear.set(year, []);
+      byYear.get(year).push(p);
+    }
+    const years = [...byYear.keys()].sort((a, b) => b - a).map((year) => ({
+      year, posts: byYear.get(year),
+    }));
+
+    res.render('sitemap', {
+      years, tags, totalCount: posts.length,
+      pageTitle: '站点地图', pageDescription: `${process.env.SITE_NAME || 'blog.blue'} 全部文章索引，按年份归档`,
+    });
+  } catch (err) { next(err); }
+});
+
 router.get('/sitemap.xml', async (req, res, next) => {
   try {
     const posts = await postModel.listPublished({ page: 1, perPage: 1000 });

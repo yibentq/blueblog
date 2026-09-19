@@ -309,8 +309,49 @@ footer a { color: var(--line-white-dim); }
 .not-found .code { font-family: var(--font-mono); color: var(--brass); font-size: 0.9rem; margin-bottom: 0.6rem; }
 .not-found h1 { font-family: var(--font-display); font-size: 2rem; margin: 0 0 0.8rem; }
 
+/* ---------- 站点地图：图纸目录表 ---------- */
+
+.sitemap-page .page-heading p a { color: var(--brass); }
+
+.sitemap-tags { margin-bottom: 2.2rem; }
+.sitemap-tags h2 {
+  font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.04em;
+  color: var(--line-white-dim); font-weight: 400; margin: 0 0 0.9rem; text-transform: uppercase;
+}
+.tag-index { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: baseline; }
+.tag-index-item {
+  font-family: var(--font-display); color: var(--line-white); text-decoration: none;
+  display: inline-flex; align-items: baseline; gap: 0.3rem;
+}
+.tag-index-item:hover { color: var(--brass); }
+.tag-index-item .tag-count {
+  font-family: var(--font-mono); font-size: 0.65rem; color: var(--brass);
+  border: 1px solid rgba(199, 154, 69, 0.4); border-radius: 999px; padding: 0.05rem 0.4rem;
+}
+
+.sitemap-year { margin-bottom: 2.2rem; }
+.sitemap-year-label {
+  display: flex; align-items: baseline; gap: 0.8rem;
+  border-bottom: 1px solid var(--line-white-dim); padding-bottom: 0.5rem; margin: 0 0 0.8rem;
+}
+.sitemap-year-num { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; color: var(--line-white); }
+.sitemap-year-count { font-family: var(--font-mono); font-size: 0.75rem; color: var(--brass); }
+
+.sitemap-list { list-style: none; margin: 0; padding: 0; }
+.sitemap-list li {
+  display: flex; align-items: baseline; gap: 0.8rem; padding: 0.45rem 0;
+  border-bottom: 1px dashed rgba(234, 240, 248, 0.12);
+}
+.sitemap-list li:last-child { border-bottom: none; }
+.sitemap-no { font-family: var(--font-mono); font-size: 0.72rem; color: var(--line-white-dim); flex-shrink: 0; width: 4.2rem; }
+.sitemap-list a { flex: 1; color: var(--line-white); text-decoration: none; }
+.sitemap-list a:hover { color: var(--brass); }
+.sitemap-date { font-family: var(--font-mono); font-size: 0.72rem; color: var(--line-white-dim); flex-shrink: 0; }
+
 @media (max-width: 640px) {
   .titleblock-inner { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
   .post-article { padding: 1.8rem 1.4rem 2.2rem; outline-offset: -7px; }
   .post-card { outline-offset: -6px; }
+  .sitemap-no { width: 3.2rem; }
+  .sitemap-list li { flex-wrap: wrap; }
 }

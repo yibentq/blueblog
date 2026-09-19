@@ -62,6 +62,16 @@ async function getTagsForPost(postId) {
   return rows;
 }
 
+// 给"站点地图"页用：全部已发布文章，只取轻量字段，按发布时间倒序，不分页
+// （个人博客量级下几百篇也就几十 KB，没必要为这个页面单独做分页）
+async function listAllPublishedForSitemap() {
+  const { rows } = await pool.query(
+    `SELECT slug, title, published_at FROM posts
+     WHERE status = 'published' ORDER BY published_at DESC LIMIT 2000`
+  );
+  return rows;
+}
+
 // ---- 后台用（不过滤 status）----
 
 async function listAll({ page = 1, perPage = 20 } = {}) {
@@ -154,5 +164,6 @@ async function setTags(postId, tagIds) {
 
 module.exports = {
   listPublished, countPublished, getPublishedBySlug, incrementViewCount, getTagsForPost,
+  listAllPublishedForSitemap,
   listAll, countAll, getById, getBySlugAny, create, update, remove, setTags,
 };
