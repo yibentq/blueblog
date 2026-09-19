@@ -88,3 +88,12 @@ td a:hover { text-decoration: underline; }
   .editor-grid { grid-template-columns: 1fr; }
   .admin-main { padding: 1.4rem; }
 }
+
+/* ---------- 图片上传列表 ---------- */
+.image-gallery { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.8rem; }
+.gallery-item {
+  display: flex; align-items: center; gap: 0.7rem; background: var(--a-panel-2);
+  border: 1px solid var(--a-border); border-radius: 4px; padding: 0.5rem 0.7rem;
+}
+.gallery-item img { width: 48px; height: 48px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+.gallery-item .gallery-name { flex: 1; font-size: 0.72rem; color: var(--a-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

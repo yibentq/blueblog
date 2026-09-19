@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('fs');
 const router = express.Router();
 
 const { requireAuth, redirectIfAuthed } = require('../middleware/auth');
@@ -14,9 +15,12 @@ const tagModel = require('../models/tag');
 const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
 
-// 所有写操作（POST/PUT/DELETE）都过 CSRF 校验；GET 不需要，但要能拿到 token 塞进表单
+// 所有写操作（POST/PUT/DELETE）都过 CSRF 校验；GET 不需要，但要能拿到 token 塞进表单。
+// /upload 是例外：它是 multipart/form-data 请求，express.urlencoded/json 都解析不了这种请求体，
+// 这里做的通用校验这时候还读不到 req.body._csrf（要等 multer 先解析完 body 才有）。
+// 所以 /upload 放到路由自己里面、在 multer 解析完之后手动校验（见下面的 router.post('/upload', ...)）。
 router.use((req, res, next) => {
-  if (req.method === 'GET') return next();
+  if (req.method === 'GET' || req.path === '/upload') return next();
   return doubleCsrfProtection(req, res, next);
 });
 
@@ -149,9 +153,30 @@ async function savePost(id, body) {
 
 // ---------- 图片上传（供编辑器插入封面图 / 正文图片）----------
 
-router.post('/upload', upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: '没有收到文件' });
-  res.json({ url: `/uploads/${req.file.filename}` });
+// 不直接把 upload.single(...) 当中间件用——那样 multer 的错误（比如超出大小限制）
+// 会被 Express 的通用错误处理接住，最后渲染成一个和上传毫无关系的"服务器开小差了"页面。
+// 手动包一层，把 multer 的错误原样转成前端能读懂的 JSON；multer 解析完 body 之后再手动做 CSRF 校验
+// （原因见上面 router.use 里的注释：multipart 请求这时候才有 req.body._csrf 可读）。
+router.post('/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          error: `文件太大，最大允许 ${Number(process.env.MAX_UPLOAD_MB) || 8}MB`,
+        });
+      }
+      return res.status(400).json({ error: err.message || '上传失败' });
+    }
+    doubleCsrfProtection(req, res, (csrfErr) => {
+      if (csrfErr) {
+        // 文件已经存到磁盘了，但请求本身没通过校验，不能留着这个孤儿文件
+        if (req.file) fs.unlink(req.file.path, () => {});
+        return res.status(403).json({ error: '请求已过期，刷新页面后重试' });
+      }
+      if (!req.file) return res.status(400).json({ error: '没有收到文件' });
+      res.json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname });
+    });
+  });
 });
 
 // ---------- 评论审核 ----------

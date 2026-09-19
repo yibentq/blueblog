@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= post ? '编辑文章' : '写新文章' %> · blog.blue 后台</title>
-  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= assetVersion %>">
 </head>
 <body>
   <div class="admin-shell">
@@ -28,10 +28,15 @@
               <label for="content_md">正文（Markdown）</label>
               <textarea id="content_md" name="content_md" class="md-editor" required><%= post ? post.content_md : '' %></textarea>
               <p class="hint">
-                <button type="button" id="image-upload-btn" class="btn secondary" style="padding:0.3rem 0.7rem;font-size:0.75rem">插入图片</button>
-                <input type="file" id="image-upload-input" accept="image/*" style="display:none">
-                <span id="upload-status"></span>
+                先把光标点到正文里想放图片的位置，再点"上传图片"——上传完成后会出现在下面的图片列表里，点"插入到光标处"才会真正写进正文，不会自动帮你插在错误的地方。
               </p>
+              <div class="field" style="margin-bottom:0.6rem">
+                <button type="button" id="image-upload-btn" class="btn secondary" style="padding:0.4rem 0.8rem;font-size:0.78rem">+ 上传图片</button>
+                <input type="file" id="image-upload-input" accept="image/*" data-max-mb="<%= maxUploadMb %>" style="display:none">
+                <span class="hint" style="margin-left:0.5rem">最大 <%= maxUploadMb %>MB，支持 JPG / PNG / WebP / GIF</span>
+                <div id="upload-status" class="hint" style="margin-top:0.4rem"></div>
+              </div>
+              <div id="image-gallery" class="image-gallery"></div>
             </div>
           </div>
 
@@ -82,6 +87,6 @@
       </form>
     </div>
   </div>
-  <script nonce="<%= cspNonce %>" src="/js/admin.js"></script>
+  <script nonce="<%= cspNonce %>" src="/js/admin.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

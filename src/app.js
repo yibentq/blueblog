@@ -15,6 +15,11 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 
+// 每次进程启动（也就是每次 pm2 restart / 部署）都会变一次，用来给静态资源做 cache-busting——
+// 静态资源本身仍然可以让浏览器长期缓存（见下面 express.static 的 maxAge），
+// 但只要 URL 带的版本号变了，浏览器就会当成新资源重新请求，不需要每次改完 CSS/JS 都手动清缓存。
+const ASSET_VERSION = Date.now();
+
 // 部署在 Cloudflare / Nginx 反代之后，必须信任第一跳代理，
 // 否则 req.ip、req.secure、限流用的 IP 全部会是反代自己的地址——限流形同虚设。
 if (process.env.TRUST_PROXY === 'true') {
@@ -65,6 +70,8 @@ app.use((req, res, next) => {
   res.locals.siteAuthor = process.env.SITE_AUTHOR || '';
   res.locals.siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');
   res.locals.siteLaunchDate = process.env.SITE_LAUNCH_DATE || new Date().toISOString();
+  res.locals.assetVersion = ASSET_VERSION;
+  res.locals.maxUploadMb = Number(process.env.MAX_UPLOAD_MB) || 8;
   res.locals.currentPath = req.path;
   next();
 });
