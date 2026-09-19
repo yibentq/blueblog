@@ -57,12 +57,15 @@ if [[ -f "$APP_DIR/.env" ]]; then
   ADMIN_PASSWORD=$(grep -oP '(?<=^ADMIN_PASSWORD=).*' "$APP_DIR/.env")
   SESSION_SECRET=$(grep -oP '(?<=^SESSION_SECRET=).*' "$APP_DIR/.env")
   CSRF_SECRET=$(grep -oP '(?<=^CSRF_SECRET=).*' "$APP_DIR/.env")
+  # 水印密钥尤其要复用：换了它，此前所有已发布图片的防伪暗码就全部对不上了
+  WATERMARK_SECRET=$(grep -oP '(?<=^WATERMARK_SECRET=).*' "$APP_DIR/.env")
   SITE_LAUNCH_DATE=$(grep -oP '(?<=^SITE_LAUNCH_DATE=).*' "$APP_DIR/.env")
 fi
 DB_PASSWORD=${DB_PASSWORD:-$(openssl rand -hex 16)}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-$(openssl rand -base64 18 | tr -d '/+=' | head -c 16)}
 SESSION_SECRET=${SESSION_SECRET:-$(openssl rand -hex 32)}
 CSRF_SECRET=${CSRF_SECRET:-$(openssl rand -hex 32)}
+WATERMARK_SECRET=${WATERMARK_SECRET:-$(openssl rand -hex 32)}
 # 建站时间：第一次部署时"现在"就是真实的建站时刻；重跑脚本时上面已经从旧 .env 复用了，不会被重置成 0 天
 SITE_LAUNCH_DATE=${SITE_LAUNCH_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
 
@@ -174,6 +177,9 @@ SITE_NAME=blog.blue
 SITE_DESCRIPTION=一个只做一件事的博客
 SITE_AUTHOR=AAAduo
 SITE_LAUNCH_DATE=${SITE_LAUNCH_DATE}
+
+WATERMARK_SECRET=${WATERMARK_SECRET}
+WATERMARK_POSITION=southeast
 
 UPLOAD_DIR=${APP_DIR}/uploads
 MAX_UPLOAD_MB=8

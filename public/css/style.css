@@ -100,17 +100,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display: inline-block;
 }
 .brand:hover { color: var(--brass); }
-.brand .wordmark { display: block; }
-.brand .wordmark-blog { font-family: var(--font-display); fill: var(--line-white); }
-.brand .wordmark-blue { font-family: var(--font-display); fill: var(--brass); }
-.brand .wordmark-mark circle, .brand .wordmark-mark line { stroke: var(--brass); }
-.brand .wordmark-mark circle:nth-child(2) { fill: var(--brass); }
-.brand .wordmark-rule { stroke: var(--line-white); stroke-opacity: 0.3; }
-.brand .wordmark-tick { stroke: var(--brass); }
+/* 词标是服务端生成的内联 SVG（见 src/utils/brand.js），笔画颜色写在属性上，
+   这里只管排版和交互态——颜色不在 CSS 里重复定义一遍，避免两处不同步。 */
+.brand .wordmark { display: block; overflow: visible; }
 @media (prefers-reduced-motion: no-preference) {
-  .brand .wordmark { transition: filter .2s ease; }
+  .brand .wordmark { transition: filter .25s ease; }
+  /* 收尾那一笔在 hover 时像刚写完一样重新描一遍——签名本来就是"写"出来的，
+     这个动作比单纯加个发光更贴题。stroke-dash 动画只在用户没有开启减少动效时才跑。 */
+  .brand .wordmark-rule path {
+    stroke-dasharray: 720;
+    stroke-dashoffset: 0;
+  }
+  .brand:hover .wordmark-rule path { animation: brand-sign .7s ease forwards; }
 }
-.brand:hover .wordmark { filter: drop-shadow(0 0 6px rgba(199, 154, 69, 0.45)); }
+@keyframes brand-sign {
+  from { stroke-dashoffset: 720; }
+  to { stroke-dashoffset: 0; }
+}
+.brand:hover .wordmark { filter: drop-shadow(0 0 7px rgba(199, 154, 69, 0.4)); }
 .brand small {
   display: block;
   font-family: var(--font-mono);

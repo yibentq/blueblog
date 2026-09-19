@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#123A63"/>
-  <path d="M6 6 H26 V26 H6 Z" fill="none" stroke="#EAF0F8" stroke-width="1.5"/>
-  <path d="M6 12 H26 M12 6 V26" stroke="#EAF0F8" stroke-width="1"/>
-  <circle cx="19" cy="19" r="4" fill="none" stroke="#C79A45" stroke-width="1.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="blog.blue">
+  <!-- favicon 用签名里的 b 单字 + 域名点，和页眉词标、图片水印同源（src/utils/brand.js）。
+       16px 下细节会糊掉，所以笔画比签名本体粗一档，背后的蓝图网格也压到极淡。 -->
+  <rect width="64" height="64" rx="8" fill="#0F2E52"/>
+  <path d="M0 22 H64 M22 0 V64" stroke="#EAF0F8" stroke-opacity="0.1" stroke-width="1"/>
+  <g transform="translate(7,3.4) scale(0.32)" fill="none" stroke="#EAF0F8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M54 132 C46 102, 58 54, 72 44 C81 38, 86 46, 80 62 C72 84, 58 110, 54 126 C58 108, 88 96, 100 110 C112 124, 92 142, 70 137 C62 135, 56 131, 54 126"/>
+  </g>
+  <circle cx="48" cy="45.6" r="3.6" fill="#C79A45"/>
 </svg>

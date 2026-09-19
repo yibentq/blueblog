@@ -1,71 +1,120 @@
+'use strict';
+
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-// 水印徽标和页眉词标用的是同一套设计语言（罗盘标记 + 烫金斜体 ".blue"），
-// 但这里是服务端用 sharp/librsvg 渲染，拿不到网页里加载的 Fraunces webfont，
-// 所以退回到服务器本身大概率装了的衬线字体（部署脚本里会装 fonts-dejavu-core 保底）。
-function buildBadgeSvg(pxWidth) {
-  // 内部固定用一个 402x160 的画布坐标系，右下角合成时按 pxWidth 整体缩放——
-  // 这样不用重新计算文字位置，画布本身已经包含"徽标内边距"和"离图片边缘的间距"。
-  const viewW = 402;
-  const viewH = 160;
-  const pxHeight = Math.round((pxWidth * viewH) / viewW);
-  const font = "'DejaVu Serif', 'Liberation Serif', Georgia, serif";
+const { buildSignature, serialFor } = require('./brand');
 
-  return {
-    width: pxWidth,
-    height: pxHeight,
-    svg: `
-<svg width="${pxWidth}" height="${pxHeight}" viewBox="0 0 ${viewW} ${viewH}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="16" y="16" width="370" height="128" rx="16" fill="#0F2E52" fill-opacity="0.58"/>
-  <g transform="translate(36,36)">
-    <text x="0" y="52" font-family="${font}" font-weight="700" font-size="46" fill="#EAF0F8" letter-spacing="-0.5">blog</text>
-    <g transform="translate(122,35)">
-      <circle cx="0" cy="0" r="7" fill="none" stroke="#C79A45" stroke-width="1.8"/>
-      <circle cx="0" cy="0" r="1.8" fill="#C79A45"/>
-      <line x1="-11" y1="0" x2="-9" y2="0" stroke="#C79A45" stroke-width="1.4"/>
-      <line x1="9" y1="0" x2="11" y2="0" stroke="#C79A45" stroke-width="1.4"/>
-      <line x1="0" y1="-11" x2="0" y2="-9" stroke="#C79A45" stroke-width="1.4"/>
-      <line x1="0" y1="9" x2="0" y2="11" stroke="#C79A45" stroke-width="1.4"/>
-    </g>
-    <text x="145" y="52" font-family="${font}" font-weight="400" font-style="italic" font-size="46" fill="#C79A45" letter-spacing="-0.5">blue</text>
-  </g>
-</svg>`.trim(),
-  };
-}
+// 水印 = 品牌签名（src/utils/brand.js 里的手绘曲线）+ 四层防伪。
+// 这里只负责"贴到哪、贴多大"，字形和防伪细节全部在 brand.js，不在这儿重复一份。
 
 const WATERMARKABLE = new Set(['image/jpeg', 'image/png', 'image/webp']);
-// GIF 故意不处理——sharp 合成水印会把动图压成单帧静态图，丢掉动画本身就是价值的一部分，
-// 得不偿失，宁可这一种格式不打水印，也不破坏用户传的动图。
+// GIF 故意不处理——sharp 合成水印会把动图压成单帧静态图，丢掉动画本身就是价值的一部分。
+
+// 合法的贴法。默认右下角：既不挡主体，裁掉又会明显破坏构图比例。
+// 想换成正中央盖章式（防盗图更狠，但更挡画面），把 .env 里的 WATERMARK_POSITION 改成 center。
+const POSITIONS = new Set(['southeast', 'southwest', 'northeast', 'northwest', 'center']);
+
+function placement(position, imgW, imgH, wmW, wmH, margin) {
+  switch (position) {
+    case 'center':
+      return { left: Math.round((imgW - wmW) / 2), top: Math.round((imgH - wmH) / 2) };
+    case 'southwest':
+      return { left: margin, top: imgH - wmH - margin };
+    case 'northeast':
+      return { left: imgW - wmW - margin, top: margin };
+    case 'northwest':
+      return { left: margin, top: margin };
+    case 'southeast':
+    default:
+      return { left: imgW - wmW - margin, top: imgH - wmH - margin };
+  }
+}
 
 async function applyWatermark(filePath, mimeType) {
-  if (!WATERMARKABLE.has(mimeType)) return;
+  if (!WATERMARKABLE.has(mimeType)) return null;
 
   const tempPath = `${filePath}.tmp`;
   try {
     const image = sharp(filePath);
     const meta = await image.metadata();
-    if (!meta.width || !meta.height) return;
+    if (!meta.width || !meta.height) return null;
 
-    // 水印宽度按图片宽度的比例走，太小的图（比如头像级别的小图）设个下限，
-    // 太大的图（比如高清大图）设个上限，不然要么看不清、要么占比例过大喧宾夺主
-    const targetWidth = Math.max(110, Math.min(260, Math.round(meta.width * 0.22)));
-    const badge = buildBadgeSvg(targetWidth);
+    // 水印宽度按图片宽度走比例，两头设上下限：太小了微缩文字会被栅格化成一团灰（防伪层失效），
+    // 太大了喧宾夺主。下限 150px 是实测微缩文字还能在原图上放大读出来的最小尺寸。
+    const targetWidth = Math.max(150, Math.min(320, Math.round(meta.width * 0.26)));
 
-    // 水印本身的高度不能超过图片高度的 40%——极端的窄长图（比如截长图）要避免水印比内容还显眼
-    if (badge.height > meta.height * 0.4) return;
+    const serialFrom = path.basename(filePath);
+    // 先按默认配色量一版尺寸，用来算落点；真正的配色要等量完落点区域的明暗才能定。
+    const probe = buildSignature({ width: targetWidth, security: true, serialFrom });
+
+    // 图太小就整个跳过：水印比内容还显眼没有意义，
+    // 而且缩到那个尺寸防伪层也已经不成立了，不如不打。
+    if (probe.width > meta.width * 0.55 || probe.height > meta.height * 0.4) return null;
+
+    const position = POSITIONS.has(process.env.WATERMARK_POSITION)
+      ? process.env.WATERMARK_POSITION
+      : 'southeast';
+    // 留白按短边算，不按宽算——竖图和横图看起来才是"同一个留白"。
+    const margin = Math.max(10, Math.round(Math.min(meta.width, meta.height) * 0.035));
+    const { left, top } = placement(position, meta.width, meta.height, probe.width, probe.height, margin);
+
+    // 量一下水印将要落到的那块区域有多亮，再决定用白笔还是墨笔。
+    // 固定用白色的老做法在浅色照片（雪景、白墙、米色纸面）上会直接消失——
+    // 水印看不见等于没有水印，防伪层也就一起没了。
+    const region = {
+      left: Math.max(0, Math.min(left, meta.width - 1)),
+      top: Math.max(0, Math.min(top, meta.height - 1)),
+      width: Math.max(1, Math.min(probe.width, meta.width - Math.max(0, left))),
+      height: Math.max(1, Math.min(probe.height, meta.height - Math.max(0, top))),
+    };
+    let luma = 0;
+    try {
+      const st = await sharp(filePath).extract(region).stats();
+      const [r, g, b] = st.channels;
+      luma = (0.299 * r.mean + 0.587 * g.mean + 0.114 * b.mean) / 255;
+    } catch {
+      luma = 0; // 量不出来就当深色处理，白笔 + 深色底衬在多数情况下都还能看
+    }
+    const onLight = luma > 0.55;
+
+    const mark = buildSignature({
+      width: targetWidth,
+      security: true,
+      halo: true, // 笔画下垫一层反色描边，浅底深底都读得清
+      haloColor: onLight ? '#FBFAF5' : '#0B1F35',
+      ink: onLight ? '#16233A' : '#EAF0F8',
+      accent: onLight ? '#9C7A38' : '#C79A45',
+      opacity: onLight ? 0.82 : 0.9,
+      serialFrom,
+    });
 
     await image
-      .composite([{ input: Buffer.from(badge.svg), gravity: 'southeast' }])
+      .composite([
+        {
+          input: Buffer.from(mark.svg),
+          // 用显式 left/top 而不是 gravity：gravity 会把水印死贴到边上（旧版看起来"没放正"
+          // 就是这个原因之一），而且没法控制留白。
+          left: Math.max(0, left),
+          top: Math.max(0, top),
+        },
+      ])
       .toFile(tempPath);
 
     fs.renameSync(tempPath, filePath);
+
+    // 把序列号打进日志：以后有人盗图，拿图片文件名就能对上是哪一张、什么时候发的。
+    console.log(
+      `[watermark] ${serialFrom} 序列号 ${mark.serial.code}${mark.serial.signed ? '' : '（未配置 WATERMARK_SECRET，用的是公共序列）'}`
+    );
+    return mark.serial;
   } catch (err) {
-    // 打水印失败不应该让整次上传失败——清理掉可能残留的临时文件，原图保持不变，静默降级
+    // 打水印失败不该让整次上传失败——清理临时文件，原图保持不变，静默降级
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     console.error('[watermark] 处理失败，跳过水印：', err.message);
+    return null;
   }
 }
 
-module.exports = { applyWatermark };
+module.exports = { applyWatermark, serialFor };
