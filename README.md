@@ -78,7 +78,29 @@ pm2 startup   # 让 PM2 开机自启
 - **产品评估工程师角度**：核心指标是"发一篇文章需要几步"和"页面加载够不够快"。发文流程是：写标题→写 Markdown→选状态→保存，4 步内完成；页面除 Google Fonts 外无其他外部请求，静态资源本地出且带 7-30 天缓存。
 - **用户体验评测师角度**：键盘可访问性（可见 focus 样式）、`prefers-reduced-motion` 降级、移动端断点，都在基础 CSS 里覆盖了，不是"以后再加"的待办事项。
 
-## 可选的后续扩展（当前版本刻意没做，量级不到之前别加）
+## 品牌视觉
+
+- `views/partials/wordmark.ejs`：手工设计的 blog.blue 词标（内联 SVG），句号位置是罗盘/坐标标记，
+  ".blue" 烫金斜体区分域名后缀。内联而不是 `<img>` 引用，是为了让它继承页面已加载的 Fraunces 字体。
+- `public/img/og-default.png`：没设封面图的文章分享到社交平台时用的默认配图，风格和词标统一。
+  如果以后想换一版设计，改 `wordmark.ejs` 里的 SVG，再跑一遍生成 OG 图的脚本（见 git 历史里的
+  `build-og.js`，没留在仓库里，需要的话按同样思路重新写一份，几行 sharp 代码）。
+
+## 图片水印
+
+`src/utils/watermark.js`：上传图片时自动在右下角加一个半透明徽标（同一套词标设计）。
+- 水印宽度按图片宽度的 22% 自适应，110–260px 之间夹住，避免小图挤、大图水印太小看不清
+- GIF 不处理——sharp 合成水印会把动图压扁成单帧，宁可不打水印也不破坏动画
+- 依赖服务器上有衬线字体（部署脚本会装 `fonts-dejavu-core`），没有的话会退化成系统默认字体，不会报错
+
+## SEO
+
+- `head.ejs`：完整的 OG/Twitter 标签、JSON-LD 结构化数据（首页 WebSite / 文章页 BlogPosting）
+- `sitemap.xml` 带 `lastmod`
+- 后台所有页面响应头带 `X-Robots-Tag: noindex, nofollow`，和 robots.txt 的 Disallow 形成双保险
+- 分页页面带 `rel=prev/next`
+
+
 
 - 全文搜索：文章量上百篇之后，可以加 PostgreSQL 的 `tsvector` 全文索引，不需要单独上 Elasticsearch。
 - 图片存储换成对象存储（R2/S3）：流量大了再换，现在本地磁盘 + Nginx 直出完全够用。

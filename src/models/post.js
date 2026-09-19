@@ -15,7 +15,7 @@ async function listPublished({ page = 1, perPage = 10, tagSlug = null } = {}) {
   }
   const { rows } = await pool.query(
     `SELECT p.id, p.slug, p.title, p.summary, p.cover_image, p.reading_minutes,
-            p.view_count, p.is_pinned, p.published_at
+            p.view_count, p.is_pinned, p.published_at, p.updated_at
      FROM posts p
      ${tagJoin}
      WHERE p.status = 'published' ${tagWhere}

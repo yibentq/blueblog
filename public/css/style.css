@@ -39,6 +39,11 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 
+/* 选中高亮——不用默认那种惨淡的浏览器蓝，换成烫金色配深墨色文字，
+   呼应罗盘水印和卡片描边用的同一个烫金色，选中一段文字也像用蜡封章圈出来的感觉 */
+::selection { background: var(--brass); color: var(--ink); }
+::-moz-selection { background: var(--brass); color: var(--ink); }
+
 body {
   margin: 0;
   background: var(--blue-900);
@@ -92,8 +97,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   letter-spacing: -0.01em;
   color: var(--line-white);
   text-decoration: none;
+  display: inline-block;
 }
 .brand:hover { color: var(--brass); }
+.brand .wordmark { display: block; }
+.brand .wordmark-blog { font-family: var(--font-display); fill: var(--line-white); }
+.brand .wordmark-blue { font-family: var(--font-display); fill: var(--brass); }
+.brand .wordmark-mark circle, .brand .wordmark-mark line { stroke: var(--brass); }
+.brand .wordmark-mark circle:nth-child(2) { fill: var(--brass); }
+.brand .wordmark-rule { stroke: var(--line-white); stroke-opacity: 0.3; }
+.brand .wordmark-tick { stroke: var(--brass); }
+@media (prefers-reduced-motion: no-preference) {
+  .brand .wordmark { transition: filter .2s ease; }
+}
+.brand:hover .wordmark { filter: drop-shadow(0 0 6px rgba(199, 154, 69, 0.45)); }
 .brand small {
   display: block;
   font-family: var(--font-mono);
@@ -101,7 +118,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   letter-spacing: 0.02em;
   color: var(--line-white-dim);
   font-weight: 400;
-  margin-top: 0.2rem;
+  margin-top: 0.35rem;
 }
 .nav-links { display: flex; gap: 1.25rem; font-family: var(--font-mono); font-size: 0.8125rem; }
 .nav-links a { color: var(--line-white-dim); text-decoration: none; }

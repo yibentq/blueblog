@@ -122,12 +122,17 @@ router.get('/feed.xml', async (req, res, next) => {
 router.get('/sitemap.xml', async (req, res, next) => {
   try {
     const posts = await postModel.listPublished({ page: 1, perPage: 1000 });
-    const urls = [
-      `${siteUrl()}/`,
-      ...posts.map((p) => `${siteUrl()}/p/${p.slug}`),
+    const iso = (d) => new Date(d).toISOString();
+    const entries = [
+      { loc: `${siteUrl()}/`, lastmod: posts[0] ? iso(posts[0].updated_at) : iso(new Date()), priority: '1.0' },
+      ...posts.map((p) => ({
+        loc: `${siteUrl()}/p/${p.slug}`,
+        lastmod: iso(p.updated_at || p.published_at),
+        priority: '0.7',
+      })),
     ];
-    const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-      .map((u) => `  <url><loc>${u}</loc></url>`)
+    const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries
+      .map((e) => `  <url><loc>${e.loc}</loc><lastmod>${e.lastmod}</lastmod><priority>${e.priority}</priority></url>`)
       .join('\n')}\n</urlset>`;
     res.type('application/xml').send(body);
   } catch (err) { next(err); }

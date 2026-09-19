@@ -81,7 +81,7 @@ echo ">> 更新系统并安装基础依赖..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get upgrade -y
-apt-get install -y curl git build-essential ufw fail2ban ca-certificates gnupg
+apt-get install -y curl git build-essential ufw fail2ban ca-certificates gnupg fonts-dejavu-core
 
 # ---------- 3. 防火墙（先开好，别把自己锁在外面）----------
 

@@ -6,6 +6,7 @@ const { requireAuth, redirectIfAuthed } = require('../middleware/auth');
 const { loginLimiter } = require('../middleware/security');
 const { generateToken, doubleCsrfProtection } = require('../middleware/csrf');
 const { upload, uploadDir } = require('../middleware/upload');
+const { applyWatermark } = require('../utils/watermark');
 const { renderMarkdown, estimateReadingMinutes } = require('../utils/markdown');
 const { toSlug } = require('../utils/slug');
 
@@ -14,6 +15,13 @@ const postModel = require('../models/post');
 const tagModel = require('../models/tag');
 const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
+
+// robots.txt 已经 Disallow /admin/ 了，这里再加一层：直接在响应头上声明 noindex——
+// 万一后台某个页面的链接被别处意外引用到，搜索引擎爬到时也不会收录它。双保险，不冲突。
+router.use((req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
 
 // 所有写操作（POST/PUT/DELETE）都过 CSRF 校验；GET 不需要，但要能拿到 token 塞进表单。
 // /upload 是例外：它是 multipart/form-data 请求，express.urlencoded/json 都解析不了这种请求体，
@@ -167,13 +175,14 @@ router.post('/upload', (req, res) => {
       }
       return res.status(400).json({ error: err.message || '上传失败' });
     }
-    doubleCsrfProtection(req, res, (csrfErr) => {
+    doubleCsrfProtection(req, res, async (csrfErr) => {
       if (csrfErr) {
         // 文件已经存到磁盘了，但请求本身没通过校验，不能留着这个孤儿文件
         if (req.file) fs.unlink(req.file.path, () => {});
         return res.status(403).json({ error: '请求已过期，刷新页面后重试' });
       }
       if (!req.file) return res.status(400).json({ error: '没有收到文件' });
+      await applyWatermark(req.file.path, req.file.mimetype);
       res.json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname });
     });
   });
