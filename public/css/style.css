@@ -14,7 +14,7 @@
   --line-white: #EAF0F8;
   --line-white-dim: rgba(234, 240, 248, 0.55);
   --grid-line: rgba(234, 240, 248, 0.09);
-  --paper: #F4ECDB;
+  --paper: #F6EFE0;
   --paper-dim: rgba(122, 88, 42, 0.13);
   --ink-on-paper: #16233A;
   --ink-on-paper-dim: #4B5A70;
@@ -31,7 +31,9 @@
   /* 皮革底纹由 tools/build-leather.js 离线生成（真实粒面 + 光照，四边无缝）。
      文件名带版本号：改了配方就换 -v2，避免静态资源 7 天缓存导致老图继续生效。 */
   --leather-navy: url('/img/leather-navy-v1.webp');
-  --leather-cream: url('/img/leather-cream-v1.webp');
+  --leather-cream: url('/img/leather-cream-v1.webp');   /* 粗粒：只用在卡片边缘一圈 */
+  --leather-calf: url('/img/leather-calf-v1.webp');     /* 细腻小牛皮：卡片正文区，几乎是平的 */
+  --rim: 40px;                                          /* 粗粒边框的宽度（羽化过渡到中心） */
   --thread: #C79A45;            /* 缝线：烫金色，和选中高亮、标题下划线同一个色 */
   --thread-shadow: rgba(74, 46, 10, 0.42);
   --leather-edge: rgba(122, 88, 42, 0.34);
@@ -181,18 +183,38 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
 .post-card {
   position: relative;
+  isolation: isolate; /* 让 ::after 的 z-index:-1 留在卡片内部，垫在正文下面、盖在卡片底色上面 */
   background-color: var(--paper);
-  background-image:
-    radial-gradient(ellipse 125% 100% at 50% 42%, transparent 52%, rgba(126, 90, 40, 0.2) 100%),
-    linear-gradient(rgba(246, 239, 222, 0.34), rgba(246, 239, 222, 0.34)), /* 压低粒面反差：正文压在上面要读得舒服，皮质留在手感里而不是抢字 */
-    var(--leather-cream);
-  background-size: 100% 100%, 100% 100%, 384px 384px;
+  background-image: var(--leather-calf);
+  background-size: 384px 384px;
   color: var(--ink-on-paper);
   border-radius: 5px;
   padding: 1.7rem 1.8rem;
   margin-bottom: 1.3rem;
   box-shadow: var(--card-shadow);
 }
+/* ---------- 图与底：桌面有纹理，卡片中间是安静的 ----------
+   第一版整张卡片都是粗粒皮，和靛蓝桌面是同一种"忙"的质感，视线找不到主体，读久了累。
+   设计上的修正：把"质感"分层，只让最外一圈保留粗粒（皮具的边、缝线所在的那一圈），
+   往中心 40px 内羽化成细腻的小牛皮，正文区几乎是平的。
+   桌面（有纹理、暗）→ 卡片边（有纹理、亮）→ 卡片中心（安静、最亮）→ 文字：
+   越靠近要读的东西越安静，视线自然被"框"到正文上。
+   实现：粗粒是 ::after 上的一层背景，用两条方向垂直的渐变遮罩取并集 = 一圈羽化的边框。 */
+.post-card::after, .post-article::after {
+  content: '';
+  position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background-image: var(--leather-cream);
+  background-size: 384px 384px;
+  -webkit-mask-image:
+    linear-gradient(90deg, #000 0, transparent var(--rim), transparent calc(100% - var(--rim)), #000 100%),
+    linear-gradient(180deg, #000 0, transparent var(--rim), transparent calc(100% - var(--rim)), #000 100%);
+  mask-image:
+    linear-gradient(90deg, #000 0, transparent var(--rim), transparent calc(100% - var(--rim)), #000 100%),
+    linear-gradient(180deg, #000 0, transparent var(--rim), transparent calc(100% - var(--rim)), #000 100%);
+  opacity: 0.85;
+}
+.post-card { --rim: 30px; }
+
 /* 缝线：距边 10px 一圈等距针脚。用四条 repeating-linear-gradient 而不是 dashed border——
    后者每个浏览器对虚线长度/角落的处理都不一样，针脚会忽长忽短，看起来就不是"手工缝"了。
    drop-shadow 是线压进皮里留下的那道小阴影。 */
@@ -253,12 +275,10 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
 .post-article {
   position: relative;
+  isolation: isolate; /* 让 ::after 的 z-index:-1 留在卡片内部，垫在正文下面、盖在卡片底色上面 */
   background-color: var(--paper);
-  background-image:
-    radial-gradient(ellipse 125% 100% at 50% 42%, transparent 52%, rgba(126, 90, 40, 0.2) 100%),
-    linear-gradient(rgba(246, 239, 222, 0.34), rgba(246, 239, 222, 0.34)), /* 压低粒面反差：正文压在上面要读得舒服，皮质留在手感里而不是抢字 */
-    var(--leather-cream);
-  background-size: 100% 100%, 100% 100%, 384px 384px;
+  background-image: var(--leather-calf);
+  background-size: 384px 384px;
   color: var(--ink-on-paper);
   border-radius: 6px;
   padding: 2.9rem 2.7rem 2.6rem;
@@ -450,6 +470,8 @@ footer a { color: var(--line-white-dim); }
   .titleblock-inner { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
   .post-article { padding: 2.1rem 1.5rem 2.2rem; }
   .post-card::before, .post-article::before { inset: 7px; }
+  .post-article { --rim: 20px; }  /* 手机上卡片内边距只有 24px，粗粒边不能比它宽，否则会蹭到正文 */
+  .post-card { --rim: 18px; }
   body { background-size: 28px 28px, 140px 140px, 140px 140px, 28px 28px, 28px 28px, 320px 320px; }
   .sitemap-no { width: 3.2rem; }
   .sitemap-list li { flex-wrap: wrap; }

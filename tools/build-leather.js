@@ -170,6 +170,16 @@ const RECIPES = {
     shade: { base: [246, 238, 216], light: [255, 250, 236], strength: 1.25, lightGain: 0.5, exposure: 1.08, spec: 0.10, mottle: 0.05, seed: 2026, aoStrength: 0.16, tint: [0.7, 0.4, -0.2] },
     quality: 70,
   },
+  // 细腻小牛皮（卡片正文区）：文章卡片中间那一大片。
+  // 设计原则：底纹是"手感"不是"图案"——离远看几乎是平的，凑近才觉得是皮。
+  // 所以粒极细（6px）、几乎没有褶皱、明暗反差只有 ±2% 左右，也没有毛孔和色斑。
+  // 粗粒的 cream 只留在卡片边缘一圈（见 style.css 的 ::after），让视线被"框"住而不是被"抓"走。
+  calf: {
+    file: 'leather-calf-v1.webp',
+    height: { cell: 6, seed: 3141, crease: 0.9, jitter: 1.0, domeBias: 0.7, fine: 0.05, pores: 0 },
+    shade: { base: [247, 240, 224], light: [255, 252, 242], strength: 0.55, lightGain: 0.22, exposure: 1.02, spec: 0.04, mottle: 0.018, seed: 3141, aoStrength: 0.04, tint: [0, 0, 0] },
+    quality: 78,
+  },
 };
 
 async function main() {
