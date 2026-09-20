@@ -107,7 +107,7 @@
               </p>
               <div class="field" style="margin-bottom:0.6rem">
                 <button type="button" id="image-upload-btn" class="btn secondary" style="padding:0.4rem 0.8rem;font-size:0.78rem">+ 上传图片</button>
-                <input type="file" id="image-upload-input" accept="image/*" data-max-mb="<%= maxUploadMb %>" style="display:none">
+                <input type="file" id="image-upload-input" accept="image/*" data-max-mb="<%= maxUploadMb %>" hidden>
                 <span class="hint" style="margin-left:0.5rem">最大 <%= maxUploadMb %>MB，支持 JPG / PNG / WebP / GIF</span>
                 <div id="upload-status" class="hint" style="margin-top:0.4rem"></div>
               </div>
@@ -116,6 +116,16 @@
           </div>
 
           <div class="editor-side">
+            <% if (post && typeof commentCounts !== 'undefined' && commentCounts) { %>
+              <a class="side-comments" href="/admin/comments?post=<%= post.id %>&status=<%= commentCounts.pending > 0 ? 'pending' : 'all' %>">
+                <span class="side-comments-title">本文评论</span>
+                <span class="side-comments-nums">
+                  <% if (commentCounts.pending > 0) { %><b class="cm-pill pending"><%= commentCounts.pending %> 待审</b><% } %>
+                  <span><%= commentCounts.approved %> 已通过</span>
+                </span>
+                <span class="side-comments-go">去处理 &rarr;</span>
+              </a>
+            <% } %>
             <div class="field">
               <label for="status">状态</label>
               <select id="status" name="status">

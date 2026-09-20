@@ -24,11 +24,11 @@
     </article>
 
     <% if (commentsEnabled) { %>
-      <section class="comments">
+      <section class="comments" id="comments">
         <h2><%= comments.length %> 条评论</h2>
         <% comments.forEach(function(c) { %>
-          <div class="comment">
-            <p class="comment-meta"><%= c.author_name %> / <%= new Date(c.created_at).toISOString().slice(0,10) %></p>
+          <div class="comment<%= c.depth ? ' reply' : '' %><%= c.is_author ? ' by-author' : '' %>" id="c-<%= c.id %>">
+            <p class="comment-meta"><%= c.author_name %><% if (c.is_author) { %> <span class="comment-author-badge">作者</span><% } %> / <%= new Date(c.created_at).toISOString().slice(0,10) %></p>
             <p><%= c.content %></p>
           </div>
         <% }) %>

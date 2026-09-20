@@ -57,7 +57,10 @@ router.get('/p/:slug', async (req, res, next) => {
     const settings = await settingsModel.getAll();
     const [tags, comments] = await Promise.all([
       postModel.getTagsForPost(post.id),
-      settings.comments_enabled === 'true' ? commentModel.listApprovedForPost(post.id) : [],
+      // 已通过的评论按对话顺序排好（回复跟在上级后面，只缩进一层），每条带 depth
+      settings.comments_enabled === 'true'
+        ? commentModel.listApprovedForPost(post.id).then((rows) => commentModel.threadOrder(rows))
+        : [],
     ]);
     res.render('post', {
       post, tags, comments, query: req.query,

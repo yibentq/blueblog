@@ -100,6 +100,10 @@ app.use((err, req, res, next) => {
   }
 });
 
+// 评论表的新列/索引兜底（可重复执行）：即使这次更新忘了跑 `npm run migrate`，评论页也不会 500
+require('./models/comment').ensureSchema()
+  .catch((err) => console.error('[blog.blue] 评论表结构检查失败：', err.message));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`[blog.blue] 正在监听 http://127.0.0.1:${PORT}`);

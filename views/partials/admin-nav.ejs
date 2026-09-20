@@ -3,7 +3,7 @@
   <nav>
     <a href="/admin" class="<%= currentPath === '/admin' ? 'active' : '' %>">文章</a>
     <a href="/admin/posts/new" class="<%= currentPath === '/admin/posts/new' ? 'active' : '' %>">写新文章</a>
-    <a href="/admin/comments" class="<%= currentPath === '/admin/comments' ? 'active' : '' %>">评论审核</a>
+    <a href="/admin/comments" class="<%= currentPath === '/admin/comments' ? 'active' : '' %>">评论<% if (typeof pendingBadge !== 'undefined' && pendingBadge > 0) { %><span class="nav-badge" title="待审核"><%= pendingBadge > 99 ? '99+' : pendingBadge %></span><% } %></a>
     <a href="/admin/settings" class="<%= currentPath === '/admin/settings' ? 'active' : '' %>">设置</a>
     <a href="/" target="_blank" rel="noopener">查看站点 &rarr;</a>
   </nav>

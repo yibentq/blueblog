@@ -63,6 +63,13 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX IF NOT EXISTS idx_comments_post_status ON comments (post_id, status);
 
+-- v4：评论审核重做所需（可重复执行）
+-- is_author：站长自己的回复。直接通过、公开页显示"作者"标记、后台用不同颜色区分。
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_author BOOLEAN NOT NULL DEFAULT false;
+-- 收件箱按状态 + 时间取队列；"同一访客的其他评论"按 ip_hash 查
+CREATE INDEX IF NOT EXISTS idx_comments_status_created ON comments (status, created_at);
+CREATE INDEX IF NOT EXISTS idx_comments_ip ON comments (ip_hash) WHERE ip_hash IS NOT NULL;
+
 -- 站点设置（键值表，供后台“设置”页读写，避免改代码改配置）
 CREATE TABLE IF NOT EXISTS settings (
   key   VARCHAR(100) PRIMARY KEY,

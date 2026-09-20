@@ -1,0 +1,71 @@
+<%
+// 一条评论卡片。页面首次渲染和 fetch 返回的"更新后的卡片"用的是同一份模板——
+// 前端只负责替换 DOM，不自己拼卡片，所以不会出现"刷新前后长得不一样"。
+// 全部用转义输出：评论内容是陌生人写的，这里是后台，更不能让它执行任何东西。
+const iso = new Date(c.created_at).toISOString();
+const hue = (String(c.author_name || '?').codePointAt(0) || 0) % 8;
+const initial = Array.from(String(c.author_name || '?'))[0] || '?';
+const st = c.status;
+%>
+<article class="cc st-<%= st %><%= c.is_author ? ' is-author' : '' %><%= depth ? ' is-reply' : '' %>"
+         id="cc-<%= c.id %>" tabindex="-1"
+         data-id="<%= c.id %>" data-status="<%= st %>" data-post="<%= c.post_id %>" data-depth="<%= depth ? 1 : 0 %>">
+  <label class="cc-check-wrap" title="选择（X）">
+    <input type="checkbox" class="cc-check" aria-label="选择这条评论">
+  </label>
+  <div class="cc-avatar h<%= hue %>" aria-hidden="true"><%= initial %></div>
+
+  <div class="cc-body">
+    <header class="cc-head">
+      <strong class="cc-name"><%= c.author_name %></strong>
+      <% if (c.is_author) { %><span class="cc-tag author">作者</span><% } %>
+      <span class="cc-tag state <%= st %>"><%= ({ pending: '待审核', approved: '已通过', spam: '垃圾' })[st] %></span>
+      <time class="cc-time" datetime="<%= iso %>"><%= iso.slice(0, 16).replace('T', ' ') %> UTC</time>
+      <% if (!c.is_author && c.visitor) { %>
+        <span class="cc-visitor" title="按 IP 哈希识别同一访客（不保存明文 IP）。该访客共 <%= c.visitor_total %> 条评论，其中 <%= c.visitor_pending %> 条待审">
+          访客 #<%= c.visitor %><% if (c.visitor_total > 1) { %> · 共 <%= c.visitor_total %> 条<% } %>
+        </span>
+      <% } %>
+      <% if (c.author_email) { %><span class="cc-mail"><%= c.author_email %></span><% } %>
+    </header>
+
+    <% if (c.parent_id && c.parent_author) { %>
+      <div class="cc-quote"><span>回复 @<%= c.parent_author %></span><%= c.parent_excerpt %><%= (c.parent_excerpt || '').length >= 90 ? '…' : '' %></div>
+    <% } %>
+
+    <%# 这个页面按"文章"组织时（?post=）顶部已经有文章信息；全站视图里每条评论要带着它属于哪篇文章 %>
+    <a class="cc-post" href="/admin/comments?post=<%= c.post_id %>&status=all" title="只看这篇文章的全部评论">《<%= c.post_title %>》</a>
+
+    <p class="cc-text"><%= c.content %></p>
+
+    <div class="cc-actions">
+      <% if (st === 'pending') { %>
+        <button type="button" class="cc-btn ok" data-act="approve">通过 <kbd>A</kbd></button>
+        <button type="button" class="cc-btn bad" data-act="spam">垃圾 <kbd>S</kbd></button>
+        <button type="button" class="cc-btn" data-act="reply">回复并通过 <kbd>R</kbd></button>
+        <% if (c.visitor_pending > 1) { %>
+          <button type="button" class="cc-btn quiet" data-act="spam-visitor">该访客的 <%= c.visitor_pending %> 条待审全部标垃圾</button>
+        <% } %>
+      <% } else if (st === 'approved') { %>
+        <% if (!c.is_author) { %><button type="button" class="cc-btn" data-act="reply">回复 <kbd>R</kbd></button><% } %>
+        <% if (!c.is_author) { %><button type="button" class="cc-btn quiet" data-act="pending">退回待审</button><% } %>
+        <% if (!c.is_author) { %><button type="button" class="cc-btn bad" data-act="spam">标为垃圾 <kbd>S</kbd></button><% } %>
+        <% if (c.is_author) { %><button type="button" class="cc-btn bad" data-act="delete">删除这条回复</button><% } %>
+        <a class="cc-btn quiet" href="/p/<%= c.post_slug %>#c-<%= c.id %>" target="_blank" rel="noopener">在文章中查看 &nearr;</a>
+      <% } else { %>
+        <button type="button" class="cc-btn ok" data-act="approve">不是垃圾，通过</button>
+        <button type="button" class="cc-btn quiet" data-act="pending">退回待审</button>
+        <button type="button" class="cc-btn bad" data-act="delete">永久删除</button>
+      <% } %>
+    </div>
+
+    <div class="cc-reply" hidden>
+      <textarea rows="3" maxlength="2000" placeholder="以作者身份回复……"></textarea>
+      <div class="cc-reply-actions">
+        <button type="button" class="cc-btn ok" data-act="send-reply">发送回复</button>
+        <button type="button" class="cc-btn quiet" data-act="cancel-reply">取消 <kbd>Esc</kbd></button>
+        <span class="cc-hint"><%= st === 'approved' ? '' : '发送后，这条评论会一并通过。' %>Ctrl / ⌘ + Enter 发送</span>
+      </div>
+    </div>
+  </div>
+</article>

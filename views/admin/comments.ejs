@@ -3,41 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>评论审核 · blog.blue 后台</title>
+  <title>评论 · blog.blue 后台</title>
   <link rel="stylesheet" href="/css/admin.css?v=<%= assetVersion %>">
 </head>
 <body>
+  <%
+    // 生成带当前筛选条件的链接：切标签页时保留文章，切文章时保留标签页
+    function href(over) {
+      var q = { status: status, post: post ? post.id : '' };
+      Object.keys(over || {}).forEach(function (k) { q[k] = over[k]; });
+      var parts = [];
+      Object.keys(q).forEach(function (k) { if (q[k]) parts.push(k + '=' + encodeURIComponent(q[k])); });
+      return '/admin/comments' + (parts.length ? '?' + parts.join('&') : '');
+    }
+    var TAB_LABEL = { pending: '待审核', approved: '已通过', spam: '垃圾', all: '全部' };
+    var EMPTY = {
+      pending: ['收件箱清空了', '没有等待处理的评论。'],
+      approved: ['还没有已通过的评论', '通过的评论会出现在这里，可以随时回复或撤回。'],
+      spam: ['垃圾箱是空的', '被标为垃圾的评论会先放在这里，误判了可以一键恢复。'],
+      all: ['还没有任何评论', '读者提交评论后会先进入"待审核"。'],
+    };
+  %>
   <div class="admin-shell">
     <%- include('../partials/admin-nav') %>
-    <div class="admin-main">
-      <h1>待审核评论</h1>
-      <% if (pending.length === 0) { %>
-        <p class="mono" style="color:var(--a-text-dim)">没有待审核的评论</p>
+    <div class="admin-main cm-main"
+         data-csrf="<%= csrfToken %>" data-status="<%= status %>" data-post="<%= post ? post.id : '' %>"
+         data-page="<%= page %>" data-total-pages="<%= totalPages %>">
+
+      <h1>评论<% if (post) { %> <span class="cm-crumb">/ <a href="<%= href({ post: '' }) %>">全部文章</a></span><% } %></h1>
+
+      <% if (!commentsEnabled) { %>
+        <div class="alert-banner">评论功能目前是<b>关闭</b>状态：读者看不到评论区，也不能提交新评论。已有的评论仍可在这里管理。
+          <a href="/admin/settings">去设置里开启</a></div>
       <% } %>
-      <% pending.forEach(function(c) { %>
-        <table style="margin-bottom:1.2rem">
-          <tr>
-            <td style="width:70%">
-              <p class="mono" style="color:var(--a-text-dim);font-size:0.75rem;margin:0 0 0.4rem">
-                <%= c.author_name %> · 发表于《<a href="/p/<%= c.post_slug %>" target="_blank"><%= c.post_title %></a>》· <%= new Date(c.created_at).toISOString().slice(0,16).replace('T',' ') %>
-              </p>
-              <p style="margin:0"><%= c.content %></p>
-            </td>
-            <td class="row-actions">
-              <form method="post" action="/admin/comments/<%= c.id %>/approve" style="display:inline">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit" style="color:var(--a-ok)">通过</button>
-              </form>
-              &nbsp;
-              <form method="post" action="/admin/comments/<%= c.id %>/spam" style="display:inline">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit">标记垃圾</button>
-              </form>
-            </td>
-          </tr>
-        </table>
-      <% }) %>
+
+      <% if (post) { %>
+        <section class="cm-postcard">
+          <div>
+            <h2 class="cm-post-title"><%= post.title %></h2>
+            <p class="cm-post-meta">
+              <span class="badge <%= post.status %>"><%= ({ draft: '草稿', published: '已发布', archived: '已归档' })[post.status] %></span>
+              <span class="mono" id="cm-post-nums"><%= tabCounts.pending %> 待审 · <%= tabCounts.approved %> 已通过 · <%= tabCounts.spam %> 垃圾</span>
+            </p>
+          </div>
+          <div class="cm-post-links">
+            <a class="btn secondary sm" href="/admin/posts/<%= post.id %>/edit">编辑文章</a>
+            <% if (post.status === 'published') { %><a class="btn secondary sm" href="/p/<%= post.slug %>#comments" target="_blank" rel="noopener">在站点查看 &nearr;</a><% } %>
+          </div>
+        </section>
+      <% } %>
+
+      <nav class="cm-tabs" aria-label="评论状态">
+        <% ['pending', 'approved', 'spam', 'all'].forEach(function (t) { %>
+          <a href="<%= href({ status: t, page: '' }) %>" class="<%= t === status ? 'active' : '' %>"><%= TAB_LABEL[t] %>
+            <span class="cm-count <%= t === 'pending' && tabCounts.pending > 0 ? 'hot' : '' %>" data-count="<%= t %>"><%= tabCounts[t] %></span></a>
+        <% }) %>
+      </nav>
+
+      <div class="cm-layout">
+        <aside class="cm-rail" aria-label="按文章筛选">
+          <h3 class="cm-rail-title">按文章</h3>
+          <a class="cm-rail-item <%= !post ? 'active' : '' %>" href="<%= href({ post: '', page: '' }) %>">
+            <span class="cm-rail-name">全部文章</span>
+          </a>
+          <% rail.forEach(function (r) { %>
+            <a class="cm-rail-item <%= post && post.id === r.id ? 'active' : '' %>" href="<%= href({ post: r.id, page: '' }) %>"
+               data-post="<%= r.id %>" data-p="<%= r.pending %>" data-a="<%= r.approved %>" data-s="<%= r.spam %>">
+              <span class="cm-rail-name"><%= r.title %></span>
+              <span class="cm-rail-num"><% if (r.pending > 0) { %><b class="cm-pill pending"><%= r.pending %></b><% } else { %><span class="dim"><%= r.approved + r.spam %></span><% } %></span>
+            </a>
+          <% }) %>
+          <% if (rail.length === 0) { %><p class="cm-rail-empty">还没有文章收到过评论。</p><% } %>
+        </aside>
+
+        <section class="cm-content">
+          <div class="cm-toolbar">
+            <label class="cm-selectall"><input type="checkbox" id="cm-selectall" <%= cards.length ? '' : 'disabled' %>> 全选本页</label>
+            <span class="cm-keys">键盘：<kbd>J</kbd><kbd>K</kbd> 上下移动 · <kbd>A</kbd> 通过 · <kbd>S</kbd> 垃圾 · <kbd>R</kbd> 回复 · <kbd>X</kbd> 选择</span>
+          </div>
+
+          <div class="cm-bulk" id="cm-bulk" hidden>
+            <span id="cm-bulk-n">已选 0 条</span>
+            <button type="button" class="cc-btn ok" data-bulk="approve">通过</button>
+            <button type="button" class="cc-btn" data-bulk="pending">退回待审</button>
+            <button type="button" class="cc-btn bad" data-bulk="spam">标为垃圾</button>
+            <button type="button" class="cc-btn bad" data-bulk="delete">永久删除</button>
+            <button type="button" class="cc-btn quiet" data-bulk="clear">取消选择</button>
+          </div>
+
+          <div class="cm-list" id="cm-list">
+            <% cards.forEach(function (c) { %><%- include('../partials/comment-card', { c: c, depth: c.depth }) %><% }) %>
+          </div>
+
+          <div class="cm-empty" id="cm-empty" <%= cards.length ? 'hidden' : '' %>>
+            <p class="cm-empty-title" id="cm-empty-title"><%= EMPTY[status][0] %></p>
+            <p class="cm-empty-sub" id="cm-empty-sub"><%= EMPTY[status][1] %></p>
+            <a class="cm-empty-reload" id="cm-empty-reload" href="<%= href({}) %>" hidden>本页处理完了，载入下一批 &rarr;</a>
+          </div>
+
+          <% if (totalPages > 1) { %>
+            <p class="cm-pager mono">
+              <% if (page > 1) { %><a href="<%= href({ page: page - 1 }) %>">&larr; 上一页</a><% } %>
+              &nbsp;第 <%= page %> / <%= totalPages %> 页（共 <%= total %> 条）&nbsp;
+              <% if (page < totalPages) { %><a href="<%= href({ page: page + 1 }) %>">下一页 &rarr;</a><% } %>
+            </p>
+          <% } %>
+        </section>
+      </div>
+
+      <div class="cm-toast" id="cm-toast" role="status" aria-live="polite" hidden>
+        <span id="cm-toast-text"></span>
+        <button type="button" id="cm-toast-undo" hidden>撤销</button>
+      </div>
     </div>
   </div>
+  <script nonce="<%= cspNonce %>" src="/js/admin-comments.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

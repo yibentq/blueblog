@@ -392,6 +392,14 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 .comments h2 { font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 1rem; }
 .comment { padding: 0.9rem 0; border-top: 1px dashed rgba(234,240,248,0.2); }
 .comment .comment-meta { font-family: var(--font-mono); font-size: 0.72rem; color: var(--line-white-dim); margin-bottom: 0.3rem; }
+.comment { scroll-margin-top: 1.5rem; }
+.comment:target { background: rgba(199, 154, 69, 0.1); border-radius: 3px; }
+.comment.reply { margin-left: 1.6rem; padding-left: 1rem; border-left: 2px solid rgba(199, 154, 69, 0.45); border-top-style: solid; border-top-color: transparent; }
+.comment.by-author > p:not(.comment-meta) { color: var(--line-white); }
+.comment-author-badge {
+  display: inline-block; margin-left: 0.3rem; padding: 0 0.4rem; border-radius: 2px; font-size: 0.64rem; letter-spacing: 0.06em;
+  background: var(--brass); color: #2a1d06;
+}
 .comment-form { margin-top: 1.5rem; display: grid; gap: 0.7rem; }
 .comment-form input, .comment-form textarea {
   font-family: var(--font-body); font-size: 0.95rem; background: var(--paper); color: var(--ink-on-paper);

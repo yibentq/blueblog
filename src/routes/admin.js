@@ -67,19 +67,31 @@ router.post('/logout', requireAuth, (req, res) => {
 // 以下全部需要登录
 router.use(requireAuth);
 
+// 侧栏"评论"上的待审数字：每个后台页面都要，所以放在这里统一算一次。
+// 只对 GET 页面算（POST 的 JSON 接口用不到）；查询失败就当 0，不能因为一个角标拖垮整个后台页面。
+router.use(async (req, res, next) => {
+  if (req.method === 'GET') {
+    try { res.locals.pendingBadge = await commentModel.countPending(); }
+    catch (e) { res.locals.pendingBadge = 0; }
+  }
+  next();
+});
+
 // ---------- 仪表盘 ----------
 
 router.get('/', async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const [posts, total, pendingComments] = await Promise.all([
+    const [posts, total, pendingCount] = await Promise.all([
       postModel.listAll({ page, perPage: 20 }),
       postModel.countAll(),
-      commentModel.listPending(),
+      commentModel.countPending(),
     ]);
+    // 每篇文章各自的评论数（一次查完，不是每行一次查询）
+    const commentCounts = await commentModel.countsByPostIds(posts.map((p) => p.id));
     res.render('admin/dashboard', {
       posts, page, totalPages: Math.max(1, Math.ceil(total / 20)),
-      pendingCount: pendingComments.length,
+      pendingCount, commentCounts,
       csrfToken: generateToken(req, res),
     });
   } catch (err) { next(err); }
@@ -100,10 +112,13 @@ router.get('/posts/:id/edit', async (req, res, next) => {
   try {
     const post = await postModel.getById(req.params.id);
     if (!post) return res.status(404).render('admin/error', { message: '文章不存在' });
-    const postTags = await postModel.getTagsForPost(post.id);
+    const [postTags, commentCounts] = await Promise.all([
+      postModel.getTagsForPost(post.id),
+      commentModel.countsForPost(post.id),
+    ]);
     res.render('admin/editor', {
       post, tags: [], tagValue: postTags.map((t) => t.name).join(', '), query: req.query,
-      csrfToken: generateToken(req, res),
+      commentCounts, csrfToken: generateToken(req, res),
     });
   } catch (err) { next(err); }
 });
@@ -202,23 +217,131 @@ router.post('/upload', (req, res) => {
   });
 });
 
-// ---------- 评论审核 ----------
+// ---------- 评论 ----------
+//
+// 设计：评论按"文章"组织，而不是一个孤立的待审队列。
+//   /admin/comments                  全站收件箱（默认看待审）
+//   /admin/comments?post=<文章id>     绑定到某篇文章：顶部有文章上下文，评论按对话顺序排列，可以直接回复
+// 所有动作（通过/垃圾/删除/回复/批量）都是 fetch 调用 + JSON 返回，页面不刷新，
+// 返回值里带着最新的数字和重新渲染好的卡片，前端只负责替换——卡片长什么样只有一处模板说了算。
+
+const COMMENT_STATUS_TABS = ['pending', 'approved', 'spam', 'all'];
+
+function renderCommentCard(req, row, depth) {
+  return new Promise((resolve, reject) => {
+    req.app.render('partials/comment-card', { c: row, depth: depth || 0 }, (err, html) => (err ? reject(err) : resolve(html)));
+  });
+}
 
 router.get('/comments', async (req, res, next) => {
   try {
-    const pending = await commentModel.listPending();
-    res.render('admin/comments', { pending, csrfToken: generateToken(req, res) });
+    const status = COMMENT_STATUS_TABS.includes(req.query.status) ? req.query.status : 'pending';
+    const postId = commentModel.isUuid(req.query.post) ? req.query.post : null;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPage = postId ? 50 : 30;
+
+    let post = null;
+    if (postId) {
+      post = await postModel.getById(postId);
+      if (!post) return res.redirect('/admin/comments');
+    }
+
+    const [{ rows, total }, globalCounts, rail, settings, postCounts] = await Promise.all([
+      commentModel.list({ status, postId, page, perPage }),
+      commentModel.counts(),
+      commentModel.postsWithComments(),
+      settingsModel.getAll(),
+      postId ? commentModel.countsForPost(postId) : Promise.resolve(null),
+    ]);
+
+    // 标签页上的数字跟着范围走：选了文章就是这篇文章的数字
+    const tabCounts = postCounts
+      ? { ...postCounts, all: postCounts.pending + postCounts.approved + postCounts.spam }
+      : globalCounts;
+
+    // 文章绑定视图里，"全部/已通过"按对话排（回复跟在上级后面）；待审和垃圾队列保持平铺
+    const threaded = !!postId && (status === 'all' || status === 'approved');
+    const cards = threaded ? commentModel.threadOrder(rows) : rows.map((r) => ({ ...r, depth: 0 }));
+
+    res.render('admin/comments', {
+      status, post, cards, total, page, perPage,
+      totalPages: Math.max(1, Math.ceil(total / perPage)),
+      tabCounts, rail, commentsEnabled: settings.comments_enabled === 'true',
+      csrfToken: generateToken(req, res),
+    });
   } catch (err) { next(err); }
 });
 
-router.post('/comments/:id/approve', async (req, res, next) => {
-  try { await commentModel.setStatus(req.params.id, 'approved'); res.redirect('/admin/comments'); }
-  catch (err) { next(err); }
+// 改状态：通过 / 标垃圾 / 退回待审（"撤销"和"恢复"都走这里）
+router.post('/comments/:id/status', async (req, res, next) => {
+  try {
+    const status = req.body.status;
+    if (!['pending', 'approved', 'spam'].includes(status)) return res.status(400).json({ error: '状态不合法' });
+    const row = await commentModel.setStatus(req.params.id, status);
+    if (!row) return res.status(404).json({ error: '评论不存在（可能已被删除）' });
+    const depth = req.body.depth === '1' ? 1 : 0;
+    const [counts, postCounts, card] = await Promise.all([
+      commentModel.counts(), commentModel.countsForPost(row.post_id), commentModel.getCard(row.id),
+    ]);
+    res.json({ ok: true, status, counts, postId: row.post_id, postCounts, html: await renderCommentCard(req, card, depth) });
+  } catch (err) { next(err); }
 });
 
-router.post('/comments/:id/spam', async (req, res, next) => {
-  try { await commentModel.setStatus(req.params.id, 'spam'); res.redirect('/admin/comments'); }
-  catch (err) { next(err); }
+// 永久删除（前端只在"垃圾"和"站长自己的回复"上给这个按钮，并且二次确认）
+router.post('/comments/:id/delete', async (req, res, next) => {
+  try {
+    const gone = await commentModel.remove(req.params.id);
+    if (!gone) return res.status(404).json({ error: '评论不存在（可能已被删除）' });
+    const [counts, postCounts] = await Promise.all([commentModel.counts(), commentModel.countsForPost(gone.post_id)]);
+    res.json({ ok: true, replies: gone.replies, counts, postId: gone.post_id, postCounts });
+  } catch (err) { next(err); }
+});
+
+// 以站长身份回复：直接通过；回复的是一条待审评论时，上级也一并通过
+router.post('/comments/:id/reply', async (req, res, next) => {
+  try {
+    const content = (req.body.content || '').trim().slice(0, 2000);
+    if (!content) return res.status(400).json({ error: '回复内容不能为空' });
+    const authorName = (res.locals.siteAuthor || '').trim().slice(0, 80) || '作者';
+    const made = await commentModel.replyAsAuthor({ parentId: req.params.id, content, authorName });
+    if (!made) return res.status(404).json({ error: '要回复的评论不存在' });
+    const [counts, postCounts, card, parentCard] = await Promise.all([
+      commentModel.counts(), commentModel.countsForPost(made.postId), commentModel.getCard(made.id),
+      made.parentApproved ? commentModel.getCard(made.parentId) : Promise.resolve(null),
+    ]);
+    const parentDepth = req.body.depth === '1' ? 1 : 0;
+    res.json({
+      ok: true, parentId: made.parentId, parentApproved: made.parentApproved,
+      counts, postId: made.postId, postCounts,
+      html: await renderCommentCard(req, card, 1),
+      // 回复一条待审评论会顺手把它通过：把更新后的上级卡片一起带回去，前端原地替换
+      parentHtml: parentCard ? await renderCommentCard(req, parentCard, parentDepth) : null,
+    });
+  } catch (err) { next(err); }
+});
+
+// 批量：ids 用逗号分隔，最多 200 条
+router.post('/comments/bulk', async (req, res, next) => {
+  try {
+    const ids = String(req.body.ids || '').split(',').map((x) => x.trim()).filter(commentModel.isUuid).slice(0, 200);
+    const action = req.body.action;
+    if (!ids.length) return res.status(400).json({ error: '没有选中任何评论' });
+    let n = 0;
+    if (action === 'approve') n = await commentModel.setStatusMany(ids, 'approved');
+    else if (action === 'spam') n = await commentModel.setStatusMany(ids, 'spam');
+    else if (action === 'pending') n = await commentModel.setStatusMany(ids, 'pending');
+    else if (action === 'delete') n = await commentModel.removeMany(ids);
+    else return res.status(400).json({ error: '不支持的操作' });
+    res.json({ ok: true, n, counts: await commentModel.counts() });
+  } catch (err) { next(err); }
+});
+
+// 同一访客的所有"待审"评论一次性标为垃圾（已通过的不动）
+router.post('/comments/:id/spam-visitor', async (req, res, next) => {
+  try {
+    const n = await commentModel.spamPendingFromSameVisitor(req.params.id);
+    res.json({ ok: true, n, counts: await commentModel.counts() });
+  } catch (err) { next(err); }
 });
 
 // ---------- 设置 ----------
