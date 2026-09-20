@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= post ? '编辑文章' : '写新文章' %> · blog.blue 后台</title>
+  <link nonce="<%= cspNonce %>" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/admin.css?v=<%= assetVersion %>">
 </head>
 <body>
@@ -15,20 +16,94 @@
         <p class="saved-msg">已保存</p>
       <% } %>
 
-      <form method="post" action="<%= post ? '/admin/posts/' + post.id : '/admin/posts' %>">
+      <form id="post-form" method="post" action="<%= post ? '/admin/posts/' + post.id : '/admin/posts' %>"
+            data-post-key="<%= post ? post.id : 'new' %>" data-saved="<%= query && query.saved ? '1' : '0' %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <div class="editor-grid">
-          <div>
+          <div class="editor-main">
             <div class="field">
               <label for="title">标题</label>
               <input id="title" type="text" name="title" required maxlength="300" value="<%= post ? post.title : '' %>">
             </div>
-            <div class="field">
+
+            <div id="draft-banner" class="draft-banner" hidden>
+              <span id="draft-banner-text"></span>
+              <button type="button" class="btn secondary sm" id="draft-restore">恢复草稿</button>
+              <button type="button" class="btn secondary sm" id="draft-discard">丢弃</button>
+            </div>
+
+            <div class="field" style="margin-bottom:0">
               <label for="content_md">正文（Markdown）</label>
-              <textarea id="content_md" name="content_md" class="md-editor" required><%= post ? post.content_md : '' %></textarea>
+
+              <div class="md-toolbar" role="toolbar" aria-label="Markdown 工具栏">
+                <div class="tb-group">
+                  <button type="button" class="tb-btn" data-cmd="h2" title="二级标题">H2</button>
+                  <button type="button" class="tb-btn" data-cmd="h3" title="三级标题">H3</button>
+                  <button type="button" class="tb-btn" data-cmd="h4" title="四级标题">H4</button>
+                </div>
+                <div class="tb-group">
+                  <button type="button" class="tb-btn" data-cmd="bold" title="粗体 (Ctrl B)"><b>B</b></button>
+                  <button type="button" class="tb-btn" data-cmd="italic" title="斜体 (Ctrl I)"><i>I</i></button>
+                  <button type="button" class="tb-btn" data-cmd="strike" title="删除线"><s>S</s></button>
+                  <button type="button" class="tb-btn" data-cmd="mark" title="高亮重点 (==文字==)"><span class="tb-mark">高亮</span></button>
+                  <button type="button" class="tb-btn mono" data-cmd="code" title="行内代码 (Ctrl E)">&lt;/&gt;</button>
+                </div>
+                <div class="tb-group">
+                  <button type="button" class="tb-btn" data-cmd="ul" title="无序列表">• 列表</button>
+                  <button type="button" class="tb-btn" data-cmd="ol" title="有序列表">1. 编号</button>
+                  <button type="button" class="tb-btn" data-cmd="task" title="待办清单">☐ 待办</button>
+                  <button type="button" class="tb-btn" data-cmd="quote" title="引用">❝ 引用</button>
+                  <details class="tb-menu">
+                    <summary class="tb-btn" title="提示框">提示框 ▾</summary>
+                    <div class="tb-menu-pop">
+                      <button type="button" data-cmd="note">注　NOTE</button>
+                      <button type="button" data-cmd="tip">技巧　TIP</button>
+                      <button type="button" data-cmd="warn">注意　WARN</button>
+                      <button type="button" data-cmd="important">重要　IMPORTANT</button>
+                    </div>
+                  </details>
+                </div>
+                <div class="tb-group">
+                  <button type="button" class="tb-btn" data-cmd="link" title="链接 (Ctrl K)">链接</button>
+                  <button type="button" class="tb-btn" data-cmd="image" title="上传图片并插入到光标处">图片</button>
+                  <button type="button" class="tb-btn" data-cmd="codeblock" title="代码块">代码块</button>
+                  <button type="button" class="tb-btn" data-cmd="table" title="表格">表格</button>
+                  <button type="button" class="tb-btn" data-cmd="hr" title="分隔线">─</button>
+                </div>
+                <div class="tb-spacer"></div>
+                <div class="tb-group">
+                  <button type="button" class="tb-btn" id="tb-cheat" title="Markdown 使用表 (Ctrl /)">使用表</button>
+                  <div class="tb-seg" role="group" aria-label="视图">
+                    <button type="button" class="tb-btn active" data-view="write" title="只看写作区">写作</button>
+                    <button type="button" class="tb-btn tb-split" data-view="split" title="左写右看">分栏</button>
+                    <button type="button" class="tb-btn" data-view="preview" title="只看预览">预览</button>
+                  </div>
+                  <button type="button" class="tb-btn" id="tb-focus" title="专注模式 (Ctrl Alt F)">专注</button>
+                </div>
+              </div>
+
+              <div class="md-stage" id="md-stage" data-view="write">
+                <textarea id="content_md" name="content_md" class="md-editor" required spellcheck="false"><%= post ? post.content_md : '' %></textarea>
+                <div id="md-preview" class="md-preview" aria-live="polite" hidden>
+                  <div class="pv-head">
+                    <h1 id="pv-title" class="pv-title"></h1>
+                    <div class="pv-meta"><span>预览</span><span id="pv-minutes"></span><span id="pv-state"></span></div>
+                  </div>
+                  <div id="pv-body" class="pv-body"></div>
+                </div>
+              </div>
+
+              <div class="md-statusbar">
+                <span id="stat-count">0 字</span>
+                <span id="stat-time">约 1 分钟</span>
+                <span id="stat-sel"></span>
+                <span class="tb-spacer"></span>
+                <span id="stat-save" title="正文每隔几秒暂存在这台电脑的浏览器里，只是防意外关闭，不等于保存到网站">未改动</span>
+              </div>
+
               <p class="hint">
-                先把光标点到正文里想放图片的位置，再点"上传图片"——上传完成后会出现在下面的图片列表里，点"插入到光标处"才会真正写进正文，不会自动帮你插在错误的地方。
+                不确定某个符号怎么写？点上面的"使用表"。粘贴或拖入图片会直接上传并插入到光标处；下面的"+ 上传图片"只上传、不自动插入，由你选好位置再点"插入到光标处"。
               </p>
               <div class="field" style="margin-bottom:0.6rem">
                 <button type="button" id="image-upload-btn" class="btn secondary" style="padding:0.4rem 0.8rem;font-size:0.78rem">+ 上传图片</button>
@@ -59,7 +134,7 @@
               <p class="hint">最终地址：/p/&lt;slug&gt;</p>
             </div>
             <div class="field">
-              <label for="summary">摘要</label>
+              <label for="summary">摘要 <button type="button" id="summary-gen" class="link-btn" title="取正文开头的一段作为摘要，生成后可以再改">从正文生成</button></label>
               <textarea id="summary" name="summary" rows="3" maxlength="500"><%= post ? (post.summary || '') : '' %></textarea>
             </div>
             <div class="field">
@@ -85,6 +160,7 @@
           </div>
         </div>
       </form>
+      <%- include('../partials/md-cheatsheet') %>
     </div>
   </div>
   <script nonce="<%= cspNonce %>" src="/js/admin.js?v=<%= assetVersion %>"></script>

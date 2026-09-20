@@ -19,6 +19,8 @@
           <% tags.forEach(function(t) { %><a href="/tag/<%= t.slug %>">#<%= t.name %></a><% }) %>
         </div>
       <% } %>
+      <%# 文末盲压落款：同一份签名路径（brand.js），只是换成"压进皮里"的颜色 %>
+      <div class="blind-stamp" aria-hidden="true"><%- signatureMark({ width: 118, ink: '#7A582A', accent: '#7A582A', stroke: 5 }) %></div>
     </article>
 
     <% if (commentsEnabled) { %>

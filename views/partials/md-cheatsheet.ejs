@@ -1,0 +1,106 @@
+<%
+// Markdown 使用表 —— 编辑器右侧抽屉。
+// 每一行有 cmd 的都是可点击的：点一下就把对应写法插进正文光标处（选中了文字就是"套上"），
+// 和工具栏按钮走的是同一套命令（public/js/admin.js 里的 COMMANDS），不会出现"表里写的和按钮做的不一样"。
+// code 走转义输出（符号原样显示），demo 是站内自己写的静态 HTML，走原样输出。
+// （注意：这个注释里不能出现 EJS 的结束标记，会把整段脚本提前截断。）
+const groups = [
+  { title: '标题', items: [
+    { cmd: 'h2', code: '## 二级标题', demo: '<b class="d-h2">二级标题</b>', tip: '正文的大标题。文章标题已经由上方标题栏输出，正文一般从二级开始' },
+    { cmd: 'h3', code: '### 三级标题', demo: '<b class="d-h3">三级标题</b>' },
+    { cmd: 'h4', code: '#### 四级标题', demo: '<b class="d-h4">四级标题</b>' },
+  ]},
+  { title: '文字', items: [
+    { cmd: 'bold', code: '**粗体**', demo: '<b>粗体</b>', keys: 'Ctrl B' },
+    { cmd: 'italic', code: '*斜体*', demo: '<i>斜体</i>', keys: 'Ctrl I' },
+    { cmd: 'strike', code: '~~删除线~~', demo: '<s>删除线</s>' },
+    { cmd: 'mark', code: '==高亮重点==', demo: '<mark>高亮重点</mark>', tip: '比加粗更轻的强调，前台显示为金色荧光笔' },
+    { cmd: 'code', code: '`行内代码`', demo: '<code>行内代码</code>', keys: 'Ctrl E' },
+  ]},
+  { title: '列表', items: [
+    { cmd: 'ul', code: '- 无序列表', demo: '• 无序列表' },
+    { cmd: 'ol', code: '1. 有序列表', demo: '1. 有序列表' },
+    { cmd: 'task', code: '- [ ] 待办事项\n- [x] 已完成', demo: '☐ 待办事项<br>☑ 已完成' },
+    { code: 'Tab / Shift+Tab', demo: '在列表里缩进 / 取消缩进', info: true },
+    { code: '列表里按回车', demo: '自动续上下一项；空项再按回车结束列表', info: true },
+  ]},
+  { title: '引用与提示框', items: [
+    { cmd: 'quote', code: '> 引用的话', demo: '<span class="d-quote">引用的话</span>' },
+    { cmd: 'note', code: '> [!NOTE]\n> 补充说明', demo: '<span class="d-callout d-note">注 · 补充说明</span>' },
+    { cmd: 'tip', code: '> [!TIP]\n> 小技巧', demo: '<span class="d-callout d-tip">技巧 · 小技巧</span>' },
+    { cmd: 'warn', code: '> [!WARN]\n> 需要留意', demo: '<span class="d-callout d-warn">注意 · 需要留意</span>' },
+    { cmd: 'important', code: '> [!IMPORTANT]\n> 务必知道', demo: '<span class="d-callout d-important">重要 · 务必知道</span>' },
+  ]},
+  { title: '代码', items: [
+    { cmd: 'codeblock', code: '```js\nconsole.log(1)\n```', demo: '代码块（js 是语言名，可省略）' },
+  ]},
+  { title: '链接与图片', items: [
+    { cmd: 'link', code: '[显示文字](https://…)', demo: '<u>显示文字</u>', keys: 'Ctrl K', tip: '先选中文字再点，就把选中的文字变成链接；选中文字后粘贴网址也一样' },
+    { cmd: 'image', code: '![图片说明](/uploads/…)', demo: '点这里选图上传并插入；也可以直接粘贴 / 拖入图片' },
+  ]},
+  { title: '表格与分隔', items: [
+    { cmd: 'table', code: '| 列一 | 列二 |\n| --- | --- |\n| 内容 | 内容 |', demo: '三列小表格' },
+    { cmd: 'hr', code: '---', demo: '一条分隔线' },
+  ]},
+  { title: '小技巧', items: [
+    { code: '空一行', demo: '开始新的一段', info: true },
+    { code: '行尾打两个空格再回车', demo: '段内换行（不新起一段）', info: true },
+    { code: '\\* \\# \\` \\[', demo: '符号前加反斜杠 \\，就显示符号本身而不是当语法', info: true },
+  ]},
+];
+%>
+<aside id="md-drawer" class="md-drawer" aria-label="写作辅助" hidden>
+  <div class="md-drawer-head">
+    <div class="md-drawer-tabs" role="tablist">
+      <button type="button" role="tab" class="md-tab active" data-tab="cheat" aria-selected="true">使用表</button>
+      <button type="button" role="tab" class="md-tab" data-tab="outline" aria-selected="false">大纲</button>
+      <button type="button" role="tab" class="md-tab" data-tab="keys" aria-selected="false">快捷键</button>
+    </div>
+    <button type="button" class="md-drawer-close" id="md-drawer-close" aria-label="关闭">&times;</button>
+  </div>
+
+  <div class="md-drawer-body">
+    <section class="md-pane" data-pane="cheat">
+      <p class="cs-lead">点任意一行，就把这个写法放进正文光标处；先选中文字再点，就是把选中的文字"套上"这个格式，再点一次取消。</p>
+      <% groups.forEach(function (g) { %>
+        <h3 class="cs-title"><%= g.title %></h3>
+        <% g.items.forEach(function (it) { %>
+          <% if (it.cmd) { %>
+            <button type="button" class="cs-row" data-cmd="<%= it.cmd %>" <%- it.tip ? 'title="' + it.tip.replace(/"/g, '&quot;') + '"' : '' %>>
+              <pre class="cs-code"><%= it.code %></pre>
+              <span class="cs-demo"><%- it.demo %><% if (it.keys) { %> <kbd data-keys="<%= it.keys %>"><%= it.keys %></kbd><% } %></span>
+            </button>
+          <% } else { %>
+            <div class="cs-row cs-info">
+              <pre class="cs-code"><%= it.code %></pre>
+              <span class="cs-demo"><%= it.demo %></span>
+            </div>
+          <% } %>
+        <% }) %>
+      <% }) %>
+    </section>
+
+    <section class="md-pane" data-pane="outline" hidden>
+      <p class="cs-lead">按正文里的标题自动生成，点一下跳到对应位置。</p>
+      <div id="md-outline" class="md-outline"></div>
+    </section>
+
+    <section class="md-pane" data-pane="keys" hidden>
+      <table class="cs-keys">
+        <tbody>
+          <tr><td><kbd data-keys="Ctrl B">Ctrl B</kbd></td><td>粗体</td></tr>
+          <tr><td><kbd data-keys="Ctrl I">Ctrl I</kbd></td><td>斜体</td></tr>
+          <tr><td><kbd data-keys="Ctrl K">Ctrl K</kbd></td><td>链接</td></tr>
+          <tr><td><kbd data-keys="Ctrl E">Ctrl E</kbd></td><td>行内代码</td></tr>
+          <tr><td><kbd data-keys="Ctrl S">Ctrl S</kbd></td><td>保存</td></tr>
+          <tr><td><kbd data-keys="Ctrl /">Ctrl /</kbd></td><td>打开 / 关闭这个面板</td></tr>
+          <tr><td><kbd data-keys="Ctrl Alt P">Ctrl Alt P</kbd></td><td>切换 写作 / 分栏 / 预览</td></tr>
+          <tr><td><kbd data-keys="Ctrl Alt F">Ctrl Alt F</kbd></td><td>专注模式（Esc 退出）</td></tr>
+          <tr><td><kbd>Tab</kbd> / <kbd>Shift Tab</kbd></td><td>列表缩进 / 取消缩进</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>列表、引用、待办里自动续行</td></tr>
+        </tbody>
+      </table>
+      <p class="cs-lead" style="margin-top:1rem">粘贴或拖入图片会直接上传并插在光标处。选中文字后粘贴网址，会自动变成链接。写作内容每隔几秒暂存在本机浏览器里，意外关闭页面后再打开会提示恢复。</p>
+    </section>
+  </div>
+</aside>

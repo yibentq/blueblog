@@ -8,7 +8,8 @@
     "dev": "nodemon src/app.js",
     "migrate": "node db/migrate.js",
     "seed": "node db/seed.js",
-    "wm:verify": "node tools/verify-watermark.js"
+    "wm:verify": "node tools/verify-watermark.js",
+    "leather": "node tools/build-leather.js"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -46,6 +46,19 @@ const globalLimiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  // 编辑器的实时预览会在写作时频繁请求 /admin/preview，不能和访客共用同一个 120/分钟的额度——
+  // 否则写着写着就会把整个后台（包括保存按钮）一起限流。它有自己的限流器（下面），
+  // 而且路由本身在登录 + CSRF 校验之后才会真正渲染。
+  skip: (req) => req.originalUrl.split('?')[0] === '/admin/preview',
 });
 
-module.exports = { buildHelmet, loginLimiter, commentLimiter, globalLimiter };
+// 预览接口：每分钟 240 次足够连续打字（前端已做防抖，正常远用不到），同时封住未登录方的滥用
+const previewLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '预览请求太频繁，稍等一下会自动恢复' },
+});
+
+module.exports = { buildHelmet, loginLimiter, commentLimiter, globalLimiter, previewLimiter };

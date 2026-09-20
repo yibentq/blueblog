@@ -3,7 +3,7 @@ const fs = require('fs');
 const router = express.Router();
 
 const { requireAuth, redirectIfAuthed } = require('../middleware/auth');
-const { loginLimiter } = require('../middleware/security');
+const { loginLimiter, previewLimiter } = require('../middleware/security');
 const { generateToken, doubleCsrfProtection } = require('../middleware/csrf');
 const { upload, uploadDir } = require('../middleware/upload');
 const { applyWatermark } = require('../utils/watermark');
@@ -27,6 +27,8 @@ router.use((req, res, next) => {
 // /upload 是例外：它是 multipart/form-data 请求，express.urlencoded/json 都解析不了这种请求体，
 // 这里做的通用校验这时候还读不到 req.body._csrf（要等 multer 先解析完 body 才有）。
 // 所以 /upload 放到路由自己里面、在 multer 解析完之后手动校验（见下面的 router.post('/upload', ...)）。
+router.use('/preview', previewLimiter); // 放在 CSRF/登录校验之前，未登录的请求也算额度
+
 router.use((req, res, next) => {
   if (req.method === 'GET' || req.path === '/upload') return next();
   return doubleCsrfProtection(req, res, next);
@@ -158,6 +160,18 @@ async function savePost(id, body) {
   await postModel.setTags(saved.id, tagIds);
   return saved;
 }
+
+// ---------- 实时预览 ----------
+// 编辑器里的预览走的是和"保存"完全相同的 renderMarkdown（同一套扩展语法 + 同一份净化白名单），
+// 不在浏览器里另写一套渲染——那样必然出现"预览正常、发布后走样"。
+// 只做渲染，不落库、不改任何状态。
+router.post('/preview', (req, res) => {
+  const md = typeof req.body.content_md === 'string' ? req.body.content_md : '';
+  res.json({
+    html: renderMarkdown(md),
+    minutes: estimateReadingMinutes(md),
+  });
+});
 
 // ---------- 图片上传（供编辑器插入封面图 / 正文图片）----------
 
