@@ -1,8 +1,81 @@
 # blog.blue 进度交接
 
-> 给下一个接手的人/AI。按时间倒序，最新的在最上面。
+> 给下一个接手的人/AI。**先读下面"接手须知"**（固定置顶，随状态更新），再按时间倒序读各版本，最新的在最上面。
 > 约定：每完成一轮有意义的改动，在最上面加一节，写清"改了什么、为什么这么改、哪里有坑、还差什么"。
 > 不要写成 commit log 的复述——commit 里已经有了，这里要写的是**当时的判断依据**。
+
+---
+
+## 接手须知 · 当前状态（更新于 2026-09-21）
+
+### 1. 现在到哪了
+
+- `main` 最新提交是 **`0fd5576`**（评论审核重做），**已部署到生产**（站长于 2026-09-21 部署，`npm run migrate` 已跑）。
+- 最近三轮改动，各有一节详细记录，**分开提交、分开记录**（站长明确要求两个任务分开写）：
+  - **v3** 写作系统升级 + 皮革质感视觉（`fb9a4a8`）
+  - **v3.1** 卡片质感分层修正（`8f279a7`）—— 站长反馈"卡片和桌面同一种粗粒皮革，视觉疲劳、抓不住主体"，改成中心细腻 + 边缘粗粒
+  - **v4** 评论审核重做，文章与评论绑定（`0fd5576`）
+- **等站长在线上确认的**：评论收件箱的实际手感（键盘操作、撤销）、卡片质感是否合意、字体（Google Fonts）在真机上的观感。这些我在自动化测试里验证了逻辑，但**手感和观感只有站长能判断**——如果站长有反馈，按反馈迭代，别推翻重来。
+
+### 2. 项目地图（一句话版）
+
+Express + PostgreSQL + EJS 服务端渲染，无前端框架、无构建步骤。
+`src/`（`app.js`、`routes/{public,admin}`、`models/*`、`middleware/*`、`utils/{markdown,brand,watermark,slug}`）·
+`views/`（前台页面 + `admin/` 后台 + `partials/`）· `public/`（`css/`、`js/`：`admin.js`＝文章编辑器，`admin-comments.js`＝评论收件箱）· `db/`（`schema.sql`、`migrate.js`、`seed.js`）·
+`tools/`（`build-leather.js` 皮革底纹生成、`verify-watermark.js` 水印查证、`e2e/` 集成测试）。
+
+### 3. 怎么和站长协作（他明确说过/一贯的做法）
+
+- **用中文沟通**。给终端命令时**一律用 markdown 代码块**（聊天界面有一键复制按钮）；其余回复以纯文本为主，别堆格式。
+- 站长**自己做所有服务器操作**；你负责把实现做到底：写代码 → **自己测过** → 提交 → 推送 → 给他一段可直接粘贴的部署命令。别只丢一个方案让他去实现。
+- 设计类任务要**说清判断依据**，并且愿意被推翻：站长的审美反馈是最终依据（v3.1 就是这么来的）。
+- 一次给多个任务时，**分开做、分开提交、分开写进本文档**。
+- 站长遇到部署报错会把终端输出整段贴回来——按输出诊断，别猜。
+
+### 4. 部署（生产环境）
+
+约定（来自 `deploy.sh`，站长若改过请以实际为准）：项目在 `/var/www/blog-blue`，pm2 进程 `blog-blue`，运行用户 `blogblue`。
+
+```bash
+cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm install && sudo -u blogblue npm run migrate && sudo -u blogblue pm2 restart blog-blue
+```
+
+**这次部署实际踩到的两个坑（都已解决，但别再犯）：**
+
+1. **不要用 root 直接操作这个仓库**。用 root 跑过一次 `git pull` 会让 `.git` 里出现 root 拥有的对象文件，之后 `blogblue` 用户 pull 会报 `insufficient permission for adding an object to repository database`。修复：`chown -R blogblue:blogblue /var/www/blog-blue`，此后所有 git/npm/pm2 操作都加 `sudo -u blogblue`。
+2. **服务器上的文件必须只通过 `git pull` 更新**。v3 最初是拷贝文件上去的，git 把它们当成"本地未提交的改动"，后续 `git pull` 会拒绝合并（`Your local changes would be overwritten`）。处理方式：先 `tar` 备份 → `git diff <已知提交> --stat` 确认服务器上没有比仓库更新的内容 → `git reset --hard origin/main`。`.gitignore` 已经排除了 `.env`、`uploads/`、`logs/`、`node_modules/`，所以 reset 不会动它们。
+3. 忘了跑 `npm run migrate` 不会出事：`src/app.js` 启动时会调用 `commentModel.ensureSchema()` 补上评论表的新列（幂等）。**但新增迁移时也要遵循这个习惯**：schema.sql 写成 `IF NOT EXISTS`，重要的再加启动兜底。
+
+### 5. 凭据与安全
+
+- **绝不要把 token、密钥、密码写进仓库或本文档**（仓库是公开的）。
+- 站长曾在聊天里直接贴过 GitHub 细粒度 token 让 AI 推送代码。下一位接手者如需推送，请**向站长要**；推送时用一次性 URL（`git push https://x-access-token:<token>@github.com/...`），不要写进 `git remote`；并提醒站长**用完后撤销/重建**。
+- `WATERMARK_SECRET` 一旦改了，已发布图片的防伪暗码全部对不上（详见 v2）。
+
+### 6. 怎么验证改动（不要只靠"看起来对"）
+
+- `tools/e2e/` 有三套可重复的测试（评论模型 SQL、编辑器前端交互、评论收件箱端到端），用一次性的本机 Postgres + Playwright 跑，**说明见 `tools/e2e/README.md`**。这次评论重做就是用它们在真实数据库 + 真实登录/CSRF 上测的，其中还顺带抓出过真问题（前台 `parent_id` 未校验会 500）。
+- **视觉改动要截图看**：起真实模板 + 真实 CSS 用 Playwright 截图。别凭代码想象效果——v3 第一版皮革卡片"代码上没问题"，截图一看就太吵。
+- 沙箱环境的小坑：Google Fonts 访问不到（403，回退系统字体，字体观感无法在沙箱确认）；`apt-get install` 前先 `apt-get update`；用 `pkill -f "关键词"` 时，如果同一条命令里也出现了这个关键词，会把自己的 shell 一起杀掉（用 `fuser -k 端口/tcp` 更稳）。
+
+### 7. 已知坑速查（详情在对应版本节）
+
+- **CSP 会拦行内 `style="..."`**（`styleSrc` 只有 self + nonce）。新代码只用 class；老视图里零星的行内 style 在生产环境是不生效的（不影响功能）。—— v4
+- 元素自己写了 `display` 会盖掉 `[hidden]`，`admin.css` 末尾有全局兜底。—— v3
+- 皮革底纹改配方要**换文件名**（`-v1` → `-v2`），静态资源缓存 7 天。—— v3 / v3.1
+- 老文章的 `content_html` 是保存时渲染好的：新 Markdown 语法（高亮、提示框、锚点）要重新保存一次才生效。—— v3
+- `/admin/preview` 有独立限流，且被全局限流跳过（否则写作时会把整个后台一起限流）。—— v3
+- 中文输入法：所有键盘拦截前先判断 `isComposing` / `keyCode 229`。—— v3 / v4
+- 删除一条评论会级联删除它下面的回复（`parent_id ON DELETE CASCADE`）。—— v4
+
+### 8. 待办总表（都是"可选"，站长没排期）
+
+- 文章**修订历史**（每次保存留一份、可回滚）——需要新表 + 迁移
+- 代码块**语法高亮**（要加依赖；目前只有 `language-xx` 的 class）、文章**目录（TOC）**（锚点 id 已有，缺前台渲染）
+- **读者回复读者**（前台加"回复"按钮，带 `parent_id`；服务端校验已就绪）、新评论**邮件/Webhook 提醒**、**按文章关闭评论**（要给 `posts` 加列）、垃圾评论自动规则、评论搜索
+- 水印：老图不补新水印；没有"原图存一份、对外给带水印版"；签名无中文版/单色印刷版（v2）
+- 后台目前是纯色 UI（没上皮革质感，后台优先好用）；旧视图里失效的行内 style 可以顺手清理
+- 站长确认后的收尾：把"等站长确认"里的项目根据反馈更新成结论
 
 ---
 

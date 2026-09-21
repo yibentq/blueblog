@@ -109,6 +109,13 @@ pm2 startup   # 让 PM2 开机自启
 - 多语言：如果 blog.blue 要做中英双语，需要在 posts 表加 `locale` 字段，现在没做是因为你目前的内容都是中文。
 - Webmention / 评论回复通知邮件：锦上添花，不是地基。
 
+## 给接手的人
+
+- 进度、设计取舍、踩过的坑：**`docs/HANDOFF.md`**（先读最上面的"接手须知"）
+- 集成/端到端测试（评论模型、编辑器、评论收件箱）：`tools/e2e/README.md`
+- 更新生产环境：只用 `git pull`，别拷贝文件；命令和已踩过的坑见 HANDOFF 的"部署"一节
+- 重新生成皮革底纹：`npm run leather`（改配方后要把文件名升版本号）
+
 ## 首次登录
 
 `npm run seed` 之后，用 `.env` 里的 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录 `/admin/login`，登录后立刻去"设置"页把密码改掉——种子脚本里的密码等于是明文写在你本地的 `.env` 文件里，长期使用不安全。
