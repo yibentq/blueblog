@@ -31,7 +31,15 @@ body{
 .note b{ color:#E7D9B8; }
 .note.err{ color:#E8A0A0; }
 
-.spread{ position:relative; display:flex; box-shadow: 0 24px 50px rgba(2,8,18,0.5); border-radius:4px; overflow:visible; }
+.spread{ position:relative; display:flex; box-shadow: 0 24px 50px rgba(2,8,18,0.5); border-radius:4px; overflow:visible; perspective: 1800px; }
+
+.pager{ display:flex; justify-content:space-between; align-items:center; margin-top:1rem; width:100%; max-width:662px; }
+.pager button{
+  font-family:'Source Serif 4',serif; font-size:0.82rem; color:#EDE3CC; background:rgba(255,255,255,0.06);
+  border:1px solid rgba(234,240,248,0.3); border-radius:3px; padding:0.4rem 0.9rem; cursor:pointer;
+}
+.pager button:disabled{ opacity:0.35; cursor:default; }
+.pager button:not(:disabled):active{ background:rgba(255,255,255,0.14); }
 
 /* ---- 左页：封面（复用 notebook-cover 原样式，等比缩小） ---- */
 .cover-page{
@@ -78,6 +86,9 @@ body{
   border-radius: 0 4px 4px 0;
   padding: 1.6rem 1.5rem 1.2rem;
   color: var(--ink);
+  transform-origin: left center;
+  backface-visibility: hidden;
+  box-shadow: 0 0 0 transparent; /* 占位，翻页时JS会叠加真实阴影，避免闪一下没有过渡 */
 }
 .toc-header{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.9rem; }
 .toc-header .vol{ font-family:'Caveat',cursive; font-size:1.3rem; color:#5B3A1E; transform:rotate(-2deg); display:inline-block; }
@@ -117,9 +128,10 @@ body{
 </head>
 <body>
   <p class="note" id="note">
-    <b>步骤3 · 跨页静态原型（步骤4前端对接版）</b> —— 只验证封面新用色 + 内页旧材质放在一起协不协调，<b>不是最终排版</b>。
-    右页目录已换成 <code>fetch('/api/notebook/toc?...')</code> 读到的最新一册第1页真实数据（缩略图仍是占位色块，
-    步骤7再接真实图片装饰系统；标题手写字体 Caveat 仍是临时占位，未与站长确认，字体本身待定）。
+    <b>步骤3 · 跨页静态原型（含目录页翻页）</b> —— 只验证封面新用色 + 内页旧材质放在一起协不协调，<b>不是最终排版</b>。
+    右页目录已换成 <code>fetch('/api/notebook/toc?...')</code> 读到的真实数据，底部"上一页/下一页"是真的翻页
+    （同一分册内，慢速 CSS 3D 翻书动效，和步骤5点进全文的快速哗啦啦是两种手感）；缩略图仍是占位色块，
+    步骤7再接真实图片装饰系统；标题手写字体 Caveat 仍是临时占位，未与站长确认，字体本身待定。
   </p>
   <div class="spread">
     <div class="cover-page">
@@ -139,7 +151,7 @@ body{
       <div class="ribbon"></div>
     </div>
     <div class="gutter"></div>
-    <div class="toc-page">
+    <div class="toc-page" id="tocPage">
       <div class="toc-header">
         <span class="vol" id="volLabel">—</span>
         <span class="page-no" id="pageNo">—</span>
@@ -149,7 +161,11 @@ body{
       </div>
     </div>
   </div>
-  <p class="caption">跨页原型 · 左页封面（复用线上贴图）+ 右页目录（P1 茶渍内页材质 + 真实文章数据）</p>
+  <div class="pager">
+    <button type="button" id="prevBtn" disabled>‹ 上一页</button>
+    <button type="button" id="nextBtn" disabled>下一页 ›</button>
+  </div>
+  <p class="caption">跨页原型 · 左页封面（复用线上贴图）+ 右页目录（P1 茶渍内页材质 + 真实文章数据，可翻页）</p>
 
 <script>
 (function () {
@@ -158,6 +174,13 @@ body{
   var volLabelEl = document.getElementById('volLabel');
   var pageNoEl = document.getElementById('pageNo');
   var noteEl = document.getElementById('note');
+  var tocPage = document.getElementById('tocPage');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+
+  // 当前分册 + 当前页，翻页按钮和动效都基于这份状态，fetch 成功后才更新
+  var state = { year: null, quarter: null, page: 1, totalPages: 1 };
+  var busy = false; // 动画/请求进行中，防止连点导致两次翻页动效叠在一起
 
   function showFetchError(msg) {
     noteEl.classList.add('err');
@@ -168,29 +191,78 @@ body{
   }
 
   function renderEntries(data) {
+    state.year = data.year; state.quarter = data.quarter;
+    state.page = data.page; state.totalPages = data.totalPages;
     volLabelEl.textContent = data.year + ' · ' + (QUARTER_LABEL[data.quarter] || data.quarter);
     pageNoEl.textContent = '— ' + data.page + ' / ' + data.totalPages + ' —';
     entriesEl.innerHTML = '';
     if (!data.entries.length) {
       entriesEl.innerHTML = '<span class="placeholder">这个分册还没有文章。</span>';
-      return;
+    } else {
+      data.entries.forEach(function (e) {
+        var d = new Date(e.date);
+        var dateStr = (d.getMonth() + 1) + '.' + d.getDate();
+        var div = document.createElement('div');
+        div.className = 'entry';
+        div.setAttribute('data-has-image', e.hasImage ? 'true' : 'false');
+        div.innerHTML =
+          (e.hasImage ? '<div class="thumb"></div>' : '') +
+          '<span class="title"></span><span class="date"></span>' +
+          '<span class="excerpt"></span>';
+        div.querySelector('.title').textContent = e.title;
+        div.querySelector('.date').textContent = dateStr;
+        div.querySelector('.excerpt').textContent = e.excerpt || '';
+        entriesEl.appendChild(div);
+      });
     }
-    data.entries.forEach(function (e) {
-      var d = new Date(e.date);
-      var dateStr = (d.getMonth() + 1) + '.' + d.getDate();
-      var div = document.createElement('div');
-      div.className = 'entry';
-      div.setAttribute('data-has-image', e.hasImage ? 'true' : 'false');
-      div.innerHTML =
-        (e.hasImage ? '<div class="thumb"></div>' : '') +
-        '<span class="title"></span><span class="date"></span>' +
-        '<span class="excerpt"></span>';
-      div.querySelector('.title').textContent = e.title;
-      div.querySelector('.date').textContent = dateStr;
-      div.querySelector('.excerpt').textContent = e.excerpt || '';
-      entriesEl.appendChild(div);
-    });
+    prevBtn.disabled = data.page <= 1;
+    nextBtn.disabled = data.page >= data.totalPages;
   }
+
+  // 慢速物理翻页：以左侧装订缝为轴心转到90°（侧面看不见内容）时换上新数据，
+  // 再转回0°——对应 docs/BOOK_DESIGN.md 第6节"目录页之间翻页"的要求，
+  // 总时长900ms，和步骤5那版0.7s的快速哗啦啦刻意做出手感区分。
+  function flipToPage(targetPage, direction) {
+    if (busy || !state.year) return;
+    busy = true;
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    var HALF = 450; // 900ms 总时长的一半：转过去 + 换内容 + 转回来
+    var awayDeg = direction === 1 ? -92 : 92; // 1=下一页(翻向内页深处)，-1=上一页(翻回来)
+
+    tocPage.style.transition = 'transform ' + HALF + 'ms ease-in';
+    tocPage.style.transform = 'rotateY(' + awayDeg + 'deg)';
+
+    var fetchPromise = fetch(
+      '/api/notebook/toc?year=' + state.year + '&quarter=' + state.quarter + '&page=' + targetPage
+    ).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+
+    setTimeout(function () {
+      fetchPromise
+        .then(function (data) {
+          renderEntries(data); // 此刻页面转到侧面，内容看不见，换数据不会有跳变
+          tocPage.style.transition = 'transform ' + HALF + 'ms ease-out';
+          tocPage.style.transform = 'rotateY(0deg)';
+          setTimeout(function () { busy = false; }, HALF);
+        })
+        .catch(function (err) {
+          // 翻页请求失败：转回原样，不吞掉错误也不留在侧面卡住
+          tocPage.style.transition = 'transform ' + HALF + 'ms ease-out';
+          tocPage.style.transform = 'rotateY(0deg)';
+          busy = false;
+          prevBtn.disabled = state.page <= 1;
+          nextBtn.disabled = state.page >= state.totalPages;
+          showFetchError(err.message);
+        });
+    }, HALF);
+  }
+
+  prevBtn.addEventListener('click', function () {
+    if (state.page > 1) flipToPage(state.page - 1, -1);
+  });
+  nextBtn.addEventListener('click', function () {
+    if (state.page < state.totalPages) flipToPage(state.page + 1, 1);
+  });
 
   fetch('/api/notebook/volumes')
     .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })

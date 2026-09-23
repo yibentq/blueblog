@@ -35,7 +35,9 @@
 //
 // 范围声明：
 // - 只做"哗啦啦翻过一叠纸"的动效本身，接了真实数据后依然不是最终排版——不涉及目录页
-//   之间的翻页（那是步骤6，慢速物理翻转），这里是快速冲刺式的哗啦啦效果。
+//   之间的翻页（那是 docs/BOOK_DESIGN.md 第6节讲的慢速物理翻转，已在
+//   build-spread-prototype.js 里做了，不是执行计划编号的"步骤6"——那是标签/搜索
+//   便签系统，另一块），这里是快速冲刺式的哗啦啦效果。
 // - 材质复用 experiments/notebook-spread/ 已生成的 P0~P4 内页贴图，不再另起一套。
 // - 依赖同源的 /api/notebook/* 接口，不能再直接双击本地文件打开——跑 `npm run dev` 后
 //   访问 http://localhost:3000/dev/notebook/flip-transition-prototype.html。
