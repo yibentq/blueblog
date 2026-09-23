@@ -33,12 +33,15 @@ main.has-notebook { max-width: 780px; }
 
 /* ---------- 左页：封面（线上贴图 + 真实品牌签名，复用 experiments/notebook-cover 定稿方案） ---------- */
 .nb-cover {
-  position: relative; width: 260px; height: 354px; flex: none;
+  position: relative; width: 260px; flex: none;
   background-color: var(--paper);
   background-image: var(--leather-calf);
   background-size: cover; background-position: 40% 30%;
   border-radius: 4px 0 0 4px;
   z-index: 2;
+  /* 右边缘往装订缝方向压暗，模拟纸面弯进书脊——原来两页各自平打光，
+     跟中间的装订缝完全脱节，读不出"正在摊开"的弯折感。 */
+  box-shadow: inset -16px 0 18px -14px rgba(0, 0, 0, 0.5);
 }
 .nb-cover::after {
   content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
@@ -67,7 +70,10 @@ main.has-notebook { max-width: 780px; }
 /* ---------- 装订缝 + 书脊分册标签 ---------- */
 .nb-gutter {
   position: relative; width: 20px; flex: none; z-index: 3;
-  background: linear-gradient(90deg, rgba(0,0,0,0.32), rgba(0,0,0,0.06) 40%, rgba(0,0,0,0.06) 60%, rgba(0,0,0,0.32));
+  /* 原来是"两端暗、中间亮"，跟真实书脊凹陷的光影正好反了——凹槽最深处（正中间）
+     应该最暗，光线越靠近两侧书页表面才越亮。改成中间暗、两边亮，才读得出"摊开
+     的书从这里凹下去"，而不是"中间插了一根独立的分隔杆"。 */
+  background: linear-gradient(90deg, rgba(0,0,0,0.08), rgba(0,0,0,0.52) 50%, rgba(0,0,0,0.08));
 }
 .nb-spine-tabs { position: absolute; left: 0; top: 40px; width: 100%; }
 .nb-tab {
@@ -99,6 +105,9 @@ main.has-notebook { max-width: 780px; }
   padding: 1.5rem 1.4rem 3.4rem; color: var(--ink-on-paper);
   transform-origin: left center; backface-visibility: hidden;
   overflow: visible;
+  /* 左边缘往装订缝方向压暗，跟 .nb-cover 右边缘、.nb-gutter 的中心暗带接成
+     一条连续的折痕——三段拼起来才是"一本书从中间摊开"，不是三块各自打光的面板。 */
+  box-shadow: inset 16px 0 18px -14px rgba(2, 8, 18, 0.42);
 }
 .nb-toc-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.85rem; }
 /* 手写批注色：原来直接用 --brass-dim（#9C7A38）压在浅牛皮纸底上，实测对比度不到 2:1，
