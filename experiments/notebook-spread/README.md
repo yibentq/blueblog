@@ -49,6 +49,27 @@
     `toc-header` 里已经有的位置）。
   - 点击切换分册的交互完全没接（纯静态展示当前态），交互留给步骤4/6。
 
+## 步骤4后端补充（2026-09-23）
+
+真实数据接入的**后端部分**已完成，前端仍是假数据，这两件事分开进度记：
+
+- `src/models/post.js` 新增 `listVolumes` / `listByVolume` / `countByVolume`——分册按
+  `published_at` 的年/季度现算（`CEIL(月份/3.0)`），数据库里没有单独的分册字段。
+- `src/routes/public.js` 新增三个只读 JSON 接口：
+  - `GET /api/notebook/volumes` —— 书脊标签用，返回有文章的年/季度列表（新到旧）
+  - `GET /api/notebook/toc?year=&quarter=&page=` —— 目录页用，每页6篇（对应设计规格
+    "4-6篇"的上限）
+  - `GET /api/notebook/article/:slug` —— 步骤5翻页动效用，只给文章片段（标题/HTML/
+    标签），**故意不复用** `/p/:slug` 的渲染逻辑、也故意不在这里累加阅读量（真实阅读量
+    应该算在访问 `/p/:slug` 那次，这里只是换内容，前端换上内容后要不要补一次静默计数
+    还没做，是个小 TODO）
+- 用临时 Postgres + 手工插入跨季度的测试文章验证过：分册分组正确、草稿不会出现在任何
+  接口里、`year`/`quarter` 缺失或越界（比如 quarter=9）返回 400、超出范围的分页返回空
+  `entries` 而不是报错、**首页 `/` 的服务端渲染列表不受影响**（无 JS/爬虫兜底没被动到）。
+- **没做的**：前端完全没接这三个接口。`spread-prototype.html` 里的4条目录、
+  `flip-transition-prototype.html` 里的 `setTimeout(fakeLatency)`、`spine-tabs-prototype.html`
+  里的4个分册标签，都还是硬编码假数据，需要下一轮把它们换成真实 fetch。
+
 ## 站长看过跨页原型后的反馈
 
 没有给具体修改意见，直接让继续推进（跳到步骤5），按"协调、可以接受"处理，

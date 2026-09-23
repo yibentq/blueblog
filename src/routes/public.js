@@ -98,6 +98,69 @@ router.post('/p/:slug/comments', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ---- 首页"翻书"改版用的 JSON 接口（步骤4：目录翻页接入真实数据） ----
+// 注意：这三个接口只读已发布文章，不含权限校验，和 /feed.xml 一个安全等级。
+// 首页本体 `/` 的服务端渲染列表不受这几个接口影响——那才是无 JS / 爬虫看到的兜底，
+// 这里是纯粹给桌面端翻书视觉层用的数据源，前端还没接（见 experiments/notebook-spread/）。
+
+// 书脊分册标签：有文章的年/季度列表，新到旧
+router.get('/api/notebook/volumes', async (req, res, next) => {
+  try {
+    const volumes = await postModel.listVolumes();
+    res.json({ volumes });
+  } catch (err) { next(err); }
+});
+
+// 目录页：某个分册（年+季度）某一页的文章条目
+router.get('/api/notebook/toc', async (req, res, next) => {
+  try {
+    const year = parseInt(req.query.year, 10);
+    const quarter = parseInt(req.query.quarter, 10);
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    if (!year || !quarter || quarter < 1 || quarter > 4) {
+      return res.status(400).json({ error: 'year/quarter 参数无效' });
+    }
+    const perPage = 6; // 对应 BOOK_DESIGN.md 第3节"每页目录页放4-6篇"
+    const [entries, total] = await Promise.all([
+      postModel.listByVolume({ year, quarter, page, perPage }),
+      postModel.countByVolume(year, quarter),
+    ]);
+    res.json({
+      year, quarter, page, perPage, total,
+      totalPages: Math.max(1, Math.ceil(total / perPage)),
+      entries: entries.map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.summary,
+        date: p.published_at,
+        hasImage: !!p.cover_image,
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+// 点击目录条目 → 全文页翻页动效用：只要内容片段，不要整页布局。
+// 故意不复用 /p/:slug 的渲染逻辑、单独开一个轻量接口——避免为了这个视觉增强层
+// 改动已经上线、测过的 /p/:slug 主路由，降低风险面。
+router.get('/api/notebook/article/:slug', async (req, res, next) => {
+  try {
+    const post = await postModel.getPublishedBySlug(req.params.slug);
+    if (!post) return res.status(404).json({ error: '文章不存在' });
+    const tags = await postModel.getTagsForPost(post.id);
+    // 阅读量故意不在这里累加：真正的一次阅读应该发生在访问 /p/:slug 时。
+    // 翻书动效把内容换上去之后，前端应该再补一次静默计数（比如 sendBeacon 打
+    // /p/:slug 的一个轻量端点），这里先不做，是步骤4遗留的一个小 TODO。
+    res.json({
+      slug: post.slug,
+      title: post.title,
+      html: post.content_html,
+      publishedAt: post.published_at,
+      readingMinutes: post.reading_minutes,
+      tags: tags.map((t) => t.name),
+    });
+  } catch (err) { next(err); }
+});
+
 // RSS 订阅
 router.get('/feed.xml', async (req, res, next) => {
   try {

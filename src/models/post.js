@@ -62,6 +62,51 @@ async function getTagsForPost(postId) {
   return rows;
 }
 
+// ---- 首页"翻书"改版用（步骤4：目录翻页接入真实数据）----
+// 分册 = 按 published_at 的年/季度分组，没有单独的分册字段，季度用 CEIL(月份/3) 现算。
+// 只在这三个函数里做这个换算，不要在别处重复写——以后要改分册粒度（比如改成按月）
+// 只用改这一处 SQL 里的季度表达式。
+
+async function listVolumes() {
+  const { rows } = await pool.query(
+    `SELECT
+       EXTRACT(YEAR FROM published_at)::int AS year,
+       CEIL(EXTRACT(MONTH FROM published_at) / 3.0)::int AS quarter,
+       COUNT(*)::int AS n
+     FROM posts
+     WHERE status = 'published' AND published_at IS NOT NULL
+     GROUP BY 1, 2
+     ORDER BY year DESC, quarter DESC`
+  );
+  return rows;
+}
+
+async function listByVolume({ year, quarter, page = 1, perPage = 6 }) {
+  const offset = (page - 1) * perPage;
+  const { rows } = await pool.query(
+    `SELECT id, slug, title, summary, cover_image, published_at
+     FROM posts
+     WHERE status = 'published'
+       AND EXTRACT(YEAR FROM published_at) = $1
+       AND CEIL(EXTRACT(MONTH FROM published_at) / 3.0) = $2
+     ORDER BY published_at DESC
+     LIMIT $3 OFFSET $4`,
+    [year, quarter, perPage, offset]
+  );
+  return rows;
+}
+
+async function countByVolume(year, quarter) {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM posts
+     WHERE status = 'published'
+       AND EXTRACT(YEAR FROM published_at) = $1
+       AND CEIL(EXTRACT(MONTH FROM published_at) / 3.0) = $2`,
+    [year, quarter]
+  );
+  return rows[0].n;
+}
+
 // 给"站点地图"页用：全部已发布文章，只取轻量字段，按发布时间倒序，不分页
 // （个人博客量级下几百篇也就几十 KB，没必要为这个页面单独做分页）
 async function listAllPublishedForSitemap() {
@@ -164,6 +209,7 @@ async function setTags(postId, tagIds) {
 
 module.exports = {
   listPublished, countPublished, getPublishedBySlug, incrementViewCount, getTagsForPost,
+  listVolumes, listByVolume, countByVolume,
   listAllPublishedForSitemap,
   listAll, countAll, getById, getBySlugAny, create, update, remove, setTags,
 };
