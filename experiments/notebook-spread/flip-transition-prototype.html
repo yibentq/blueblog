@@ -54,12 +54,18 @@ body{
 .dest.show{ opacity:1; transition: opacity 0.15s ease-out; }
 
 .replay{ margin-top:1.4rem; font-size:0.8rem; color:#9fb3c8; }
+
+.back-btn{
+  display:inline-block; margin-bottom:1rem; cursor:pointer; border:none; background:none;
+  color:#3a5a80; font-family:inherit; font-size:0.85rem; padding:0; text-decoration:underline;
+}
+.back-btn:disabled{ color:#b8b0a0; cursor:default; text-decoration:none; }
 </style>
 </head>
 <body>
   <p class="note" id="note">
-    <b>步骤5 · 翻页动效原型（步骤4前端对接版）</b> —— 验证"点击目录条目 → 哗啦啦翻过一叠纸 → 进入全文页"
-    的动效手感和时长；目录条目和点击后取到的全文内容都已换成 <code>fetch('/api/notebook/*')</code>
+    <b>步骤5 · 翻页动效原型</b> —— 验证"点击目录条目 → 哗啦啦翻过一叠纸 → 进入全文页 →
+    返回目录"的整套动效手感和时长；目录条目和全文内容都是 <code>fetch('/api/notebook/*')</code>
     读到的真实数据（不是最终排版，动效手感本身也还没让站长确认过）。
   </p>
   <div class="demo-toc" id="demoToc">
@@ -117,6 +123,50 @@ function loadEntries() {
     .catch(function (err) { showFetchError(err.message); });
 }
 
+var TOTAL = 700; // 总时长 0.7s，落在规格要求的 0.6-1s 区间，进入/返回共用同一个时长
+
+function getPages() {
+  return [0,1,2,3].map(function (i) { return document.getElementById('fp'+i); });
+}
+
+// direction: 1 = 进入全文页（目录→左翻走），-1 = 返回目录（全文页→翻回来）
+function runFlying(direction, onDone) {
+  var pages = getPages();
+  var perPage = TOTAL / pages.length;
+  var order = direction === 1 ? pages : pages.slice().reverse(); // 返回时反着错开，制造"倒放"的观感
+
+  order.forEach(function (p, i) {
+    var delay = i * (perPage * 0.55);
+    var fromT = direction === 1
+      ? 'rotateY(0deg) translateX(0) translateY(0px)'
+      : 'rotateY(-100deg) translateX(-40px) translateY(' + ((pages.indexOf(p)-1.5)*6) + 'px)';
+    var toT = direction === 1
+      ? 'rotateY(-100deg) translateX(-40px) translateY(' + ((pages.indexOf(p)-1.5)*6) + 'px)'
+      : 'rotateY(0deg) translateX(0) translateY(0px)';
+    p.style.transition = 'none';
+    p.style.opacity = '0';
+    p.style.transform = fromT;
+    setTimeout(function () {
+      p.style.transition = 'transform ' + (perPage * 1.4) + 'ms cubic-bezier(.4,.0,.2,1), opacity ' + (perPage*1.4) + 'ms ease-out';
+      p.style.opacity = '1';
+      requestAnimationFrame(function () {
+        p.style.transform = toT;
+        setTimeout(function () { p.style.opacity = '0'; }, perPage * 1.4 * 0.7);
+      });
+    }, delay);
+  });
+
+  setTimeout(onDone, TOTAL);
+}
+
+// 真实文章看过之后，打一下轻量计数端点——不阻塞、不影响动效，失败就算了。
+// 用普通 fetch 而不是 sendBeacon：这里不是"页面要卸载了"的场景（用户可能点返回
+// 又点别的文章），sendBeacon 是为卸载场景设计的，这里语义不对。
+function pingView(slug) {
+  fetch('/api/notebook/article/' + encodeURIComponent(slug) + '/view', { method: 'POST' })
+    .catch(function () {});
+}
+
 function playFlip(slug){
   document.querySelectorAll('.demo-entry').forEach(function (e) { e.style.pointerEvents = 'none'; });
   var stage = document.getElementById('stage');
@@ -130,34 +180,34 @@ function playFlip(slug){
       return { title: '加载失败', html: '<p>' + err.message + '</p>' };
     });
 
-  var pages = [0,1,2,3].map(function (i) { return document.getElementById('fp'+i); });
-  var total = 700; // 总时长 0.7s，落在规格要求的 0.6-1s 区间
-  var perPage = total / pages.length;
-
-  pages.forEach(function (p, i) {
-    var delay = i * (perPage * 0.55); // 页与页之间错开，制造"连续哗啦啦"而不是同时消失
-    p.style.transition = 'none';
-    p.style.opacity = '0';
-    p.style.transform = 'rotateY(0deg) translateX(0)';
-    setTimeout(function () {
-      p.style.transition = 'transform ' + (perPage * 1.4) + 'ms cubic-bezier(.4,.0,.2,1), opacity ' + (perPage*1.4) + 'ms ease-out';
-      p.style.opacity = '1';
-      requestAnimationFrame(function () {
-        p.style.transform = 'rotateY(-100deg) translateX(-40px) translateY(' + ((i-1.5)*6) + 'px)';
-        setTimeout(function () { p.style.opacity = '0'; }, perPage * 1.4 * 0.7);
-      });
-    }, delay);
-  });
+  runFlying(1, function () {});
 
   Promise.all([
-    new Promise(function (r) { setTimeout(r, total); }),
+    new Promise(function (r) { setTimeout(r, TOTAL); }),
     contentReady,
   ]).then(function (results) {
     var article = results[1];
     var dest = document.getElementById('dest');
-    dest.innerHTML = '<div><h2 style="margin-top:0">' + article.title + '</h2>' + (article.html || '') + '</div>';
+    dest.innerHTML = '<button class="back-btn" id="backBtn">← 返回目录</button>' +
+      '<div><h2 style="margin-top:0">' + article.title + '</h2>' + (article.html || '') + '</div>';
     dest.classList.add('show');
     document.getElementById('replay').style.display = 'block';
+    var backBtn = document.getElementById('backBtn');
+    backBtn.onclick = function () { backToToc(backBtn); };
+    if (article.title && article.title !== '加载失败') pingView(slug);
+  });
+}
+
+function backToToc(backBtn) {
+  if (backBtn) backBtn.disabled = true; // 播放期间不许连点，避免两套动效叠在一起
+  var dest = document.getElementById('dest');
+  dest.classList.remove('show');
+  dest.innerHTML = '';
+
+  runFlying(-1, function () {
+    document.getElementById('stage').classList.remove('active');
+    document.getElementById('replay').style.display = 'none';
+    document.querySelectorAll('.demo-entry').forEach(function (e) { e.style.pointerEvents = 'auto'; });
   });
 }
 

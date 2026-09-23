@@ -161,6 +161,19 @@ router.get('/api/notebook/article/:slug', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// 翻页动效看完全文后的静默计数：真正的一次阅读应该算在这里，而不是 /p/:slug——
+// 那条路由渲染的是整页布局，翻书动效走的是这个轻量接口换内容，两者是同一次阅读的
+// 两种入口，所以复用同一个 incrementViewCount，不新增字段、不做去重（和 /p/:slug
+// 现有口径保持一致：每次访问都计一次，不做"同一用户只算一次"这种判断）。
+router.post('/api/notebook/article/:slug/view', async (req, res, next) => {
+  try {
+    const post = await postModel.getPublishedBySlug(req.params.slug);
+    if (!post) return res.status(404).json({ error: '文章不存在' });
+    postModel.incrementViewCount(post.id); // 不阻塞响应，失败也无所谓——阅读量不是关键路径
+    res.status(204).end();
+  } catch (err) { next(err); }
+});
+
 // ---- 仅开发环境：把 experiments/notebook-spread/ 里的原型 HTML 用同源方式提供出来 ----
 // 目的：这些原型现在会用 fetch() 打上面那三个只读接口，file:// 直接双击打开会因为
 // 跨源被浏览器拦掉；挂在这里之后本地跑 `npm run dev`，浏览器打开
