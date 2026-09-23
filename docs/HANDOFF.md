@@ -82,6 +82,44 @@ cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm insta
 
 ---
 
+## v10 · 2026-09-23 · 纸张材质统一 + 封面/目录页宽度对齐
+
+### 起因
+
+站长看完 v9 部署效果后反馈两点：①还是不像一本书，是"两个很奇怪的页面"；
+②纸张材质"一开始就错了"——太追求旧感，要求保留封面的颗粒皮革，但纸张改成
+统一的米黄色淡线条纸。并要求接下来的分析不要看文档，直接以设计师视角评估
+成品可用性——这轮之后的可用性分析没有写进本文件，站长自己看聊天记录。
+
+### 改了什么
+
+- `public/css/notebook.css`：`.nb-cover` 宽度从 260px 改成 340px，和
+  `.nb-toc-page` 完全一致（之前两页宽度不一样，即使高度对齐了，视觉上还是像
+  两张不同大小的卡片拼在一起）。`.nb-emblem` 靠 `left:50%` 居中，`.nb-ribbon`
+  是靠左边距定位，两者都不依赖具体宽度数值，改宽度没有连带牵动内部元素摆位。
+- `.nb-toc-page`、`.nb-flying-page`：背景从按文章 hash 分配的 P0~P4"做旧"贴图
+  （茶渍/水渍/晒痕/包浆）改成统一的 `var(--paper)` 米黄色 + 淡横线条
+  （`repeating-linear-gradient`），翻页动效途中也不再闪过深浅不一的贴图。
+- `public/js/notebook.js`：对应去掉了两处往 DOM 上注入 `page-P*-v1.webp` 贴图
+  URL 的代码。**后端 `pickPageTexture` 和 `/api/notebook/toc` 返回的
+  `pageTexture` 字段没有动**——前端只是不再消费它，接口形状没变，以后如果要
+  恢复分级材质也不用改后端。
+
+### 没做的
+
+同 v9，两页的透视/摊开立体感（`rotateY` 静态基准）还是没做，原因不变
+（会被 `notebook.js` 里翻页/切换分册的动效绝对赋值覆盖，需要一起改）。
+
+### 部署
+
+```bash
+cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue pm2 restart blog-blue
+```
+
+只改了 CSS/JS，不需要 `npm install` / `npm run migrate`。
+
+---
+
 ## v9 · 2026-09-23 · 修"这不像一本书"的三处几何/光影错误
 
 ### 起因
