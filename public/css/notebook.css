@@ -7,6 +7,12 @@
    docs/BOOK_DESIGN.md 第1节要求"材质和语言"延续蓝图设定，不能自成一派。
    ============================================================ */
 
+:root {
+  /* 深钢笔墨水色，专用于纸面手写批注（日期/分册号），比 --brass-dim 深得多——
+     纸面底色偏浅（page-P*-v1.webp 平均亮度较高），--brass-dim 压在上面对比度不足 2:1。 */
+  --nb-ink-brass: #5C3F14;
+}
+
 main.has-notebook { max-width: 780px; }
 
 .notebook { margin: 1.5rem 0 3rem; }
@@ -95,8 +101,11 @@ main.has-notebook { max-width: 780px; }
   overflow: visible;
 }
 .nb-toc-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.85rem; }
-.nb-vol { font-family: 'Caveat', cursive; font-size: 1.25rem; color: var(--brass-dim); transform: rotate(-2deg); display: inline-block; }
-.nb-page-no { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-on-paper-dim); opacity: 0.8; }
+/* 手写批注色：原来直接用 --brass-dim（#9C7A38）压在浅牛皮纸底上，实测对比度不到 2:1，
+   基本看不清。这里单独定义一个更深的"钢笔墨水"色，只用在纸面手写批注上，不改
+   --brass-dim 本身（避免影响标签 hover 等其他场景的既有配色）。 */
+.nb-vol { font-family: 'Caveat', cursive; font-weight: 700; font-size: 1.25rem; color: var(--nb-ink-brass); transform: rotate(-2deg); display: inline-block; }
+.nb-page-no { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-on-paper-dim); }
 
 .nb-entries { display: flex; flex-direction: column; gap: 0.8rem; min-height: 220px; }
 .nb-placeholder { font-family: var(--font-body); font-size: 0.85rem; color: var(--ink-on-paper-dim); margin: 0; }
@@ -116,7 +125,7 @@ main.has-notebook { max-width: 780px; }
 .nb-entry:nth-child(odd) .nb-entry-title { transform: rotate(-0.6deg); }
 .nb-entry:nth-child(even) .nb-entry-title { transform: rotate(0.7deg); }
 .nb-entry-date {
-  font-family: 'Caveat', cursive; font-size: 0.98rem; color: var(--brass-dim); opacity: 0.9;
+  font-family: 'Caveat', cursive; font-weight: 700; font-size: 0.98rem; color: var(--nb-ink-brass);
   display: inline-block; transform: rotate(-4deg); margin-left: 0.25em;
 }
 .nb-entry-excerpt {
@@ -174,9 +183,16 @@ main.has-notebook { max-width: 780px; }
 .nb-pager-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* ---------- 标签/搜索便签 ---------- */
+/* 原来 top:-14px / left:-16px 让整张便签条悬在页面外，跟纸面没有重叠，读起来像一张
+   悬浮的独立卡片而不是"夹在书页上、露出一角"。收窄悬出量，让便签大部分压在纸面上，
+   只留一个角在外面——配合下面加的 ::before 阴影条，视觉上更像真的被纸面"接住"了。 */
 .nb-note { position: absolute; z-index: 6; }
-.nb-note-tags { top: -14px; right: 46px; }
-.nb-note-search { top: 34px; left: -16px; }
+.nb-note-tags { top: -6px; right: 46px; }
+.nb-note-search { top: 34px; left: -7px; }
+.nb-note::before {
+  content: ''; position: absolute; left: 6%; right: 6%; bottom: -3px; height: 6px;
+  background: rgba(20, 14, 4, 0.22); filter: blur(3px); z-index: -1;
+}
 
 .nb-note-tab {
   display: flex; align-items: center; gap: 0.3em; cursor: pointer; font: inherit;
