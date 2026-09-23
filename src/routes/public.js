@@ -161,6 +161,17 @@ router.get('/api/notebook/article/:slug', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ---- 仅开发环境：把 experiments/notebook-spread/ 里的原型 HTML 用同源方式提供出来 ----
+// 目的：这些原型现在会用 fetch() 打上面那三个只读接口，file:// 直接双击打开会因为
+// 跨源被浏览器拦掉；挂在这里之后本地跑 `npm run dev`，浏览器打开
+// http://localhost:3000/dev/notebook/<文件名>.html 就是同源，fetch 能正常工作。
+// 生产环境完全不挂这段路由（连 require('path') 都不执行），不会暴露实验目录。
+if (process.env.NODE_ENV !== 'production') {
+  const path = require('path');
+  const express2 = require('express');
+  router.use('/dev/notebook', express2.static(path.join(__dirname, '..', '..', 'experiments', 'notebook-spread')));
+}
+
 // RSS 订阅
 router.get('/feed.xml', async (req, res, next) => {
   try {

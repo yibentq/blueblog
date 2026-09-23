@@ -5,6 +5,31 @@
 // 打开状态下"书脊"所在的位置）上加几片可点标签，对应 docs/BOOK_DESIGN.md 第3节
 // "按年/季度分册，历史册子通过书脊上的可点标签切换"。
 //
+// 2026-09-23 补充（步骤4前端对接）：
+// - 标签数量、每个分册的目录条目**不再写死**，改成页面加载后用 fetch() 打
+//   GET /api/notebook/volumes 和 GET /api/notebook/toc?year=&quarter=&page=1，
+//   这两个接口是步骤4后端已经做好、测过的（见 src/routes/public.js）。
+// - **补上了点击切换分册的交互**（原来"点击切换的交互完全没接，纯静态展示"，见本目录
+//   README"步骤3剩余项补充"一节）：点哪个标签，哪个标签变成 .active（伸出更多），
+//   同时重新 fetch 那个分册的目录、换掉右页内容。
+// - 因为现在要发真实请求，**不能再靠双击本地文件直接打开**（file:// 协议下 fetch 相对路径
+//   会被浏览器当跨源拦掉）。运行 `npm run dev` 之后，同源访问：
+//     http://localhost:3000/dev/notebook/spine-tabs-prototype.html
+//   这条路由只在 NODE_ENV !== 'production' 时挂载（见 src/routes/public.js 对应注释），
+//   生产环境不会暴露 experiments/ 目录。
+// - **磨损（--wear）和"当前选中"（.active class）现在是两件独立的事**，这是本轮新加的
+//   工程判断，写清楚免得下次被当成 bug 改掉：
+//     · .active（标签伸出更多）跟着"你现在点开看的是哪本"走，点哪个换哪个。
+//     · --wear（磨损深浅）是每个分册固定的物理属性，按"离现在多久没翻"算——真实使用
+//       频率数据库里没记录，沿用原型阶段"越新的分册磨损越重"这条已确认的反直觉设定
+//       （最近发布的分册=写得最勤=翻得最多），按分册新旧顺序线性插值（最新 0.85 ~
+//       最旧 0.12），不随点击变化。也就是说：点开一本旧分册看，它会伸出来，但磨损
+//       深浅不会突然变重——磨损记录的是"平时翻不翻"，不是"这一刻在不在看"。
+//     · 这条新分离出来的规则本身没有和站长确认过，是延续原有设定推出的工程实现，
+//       如果站长觉得"点开哪本哪本就该显脏"更符合直觉，这里要改。
+// - 目前只 fetch 每个分册的第 1 页（`page=1`），翻页控件、步骤5的"哗啦啦翻页"动效
+//   都还没接进来——点目录条目暂时没有反应，这两项是接下来的步骤，不在这一轮里做。
+//
 // 设计判断（未与站长确认，属于本轮原型的判断题，见文件末尾说明）：
 // - 遵守步骤2禁忌1：标签本身不用 hover 高亮/发光，"当前选中"状态靠"伸出更多 + 磨损更重"
 //   两个静态视觉信号表达，不是数字界面式反馈。
@@ -14,6 +39,7 @@
 //   避免变成参考图里"巴洛克唐草"那类和设定无关的通用手帐装饰。
 //
 // 用法：node experiments/notebook-spread/build-spine-tabs-prototype.js
+// 然后 npm run dev，浏览器打开 http://localhost:3000/dev/notebook/spine-tabs-prototype.html
 
 const fs = require('fs');
 const path = require('path');
@@ -34,28 +60,12 @@ const pageUri = dataUri(path.join(__dirname, 'P1-tea-ring.png'), 'image/png');
 const sigDark = buildSignature({ width: 210, ink: '#16233A' }).svg;
 const sigLight = buildSignature({ width: 210, ink: '#FBF6E8', opacity: 0.5 }).svg;
 
-const ENTRIES = [
-  { title: '给博客换了个封面', date: '9.14', excerpt: '折腾了一下午贴图和阴影，总算不那么像 PPT 了。', hasImage: true },
-  { title: '一次失败的部署', date: '9.09', excerpt: 'Nginx 配置抄错了一行，凌晨两点在骂自己。', hasImage: false },
-  { title: '路过的一只猫', date: '9.03', excerpt: '楼下便利店门口，好像认识我了。', hasImage: true },
-  { title: '关于慢下来这件事', date: '8.27', excerpt: '这周没写代码，读了两本闲书。', hasImage: false },
-];
-
-// 4 个分册：最新（当前打开、磨损最重）在最上面，往下是历史册子（磨损递减——
-// 越久没翻的册子，标签本该越干净，这点和"整体做旧"的直觉相反，是刻意的）
-const VOLUMES = [
-  { label: '2026·秋', active: true, wear: 0.85 },
-  { label: '2026·夏', active: false, wear: 0.4 },
-  { label: '2026·春', active: false, wear: 0.25 },
-  { label: '2025·冬', active: false, wear: 0.15 },
-];
-
 const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>blog.blue 书脊分册标签原型（步骤3剩余项）</title>
+<title>blog.blue 书脊分册标签原型（步骤3剩余项 + 步骤4前端对接）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Source+Serif+4:ital@0;1&display=swap" rel="stylesheet">
 <style>
@@ -81,6 +91,7 @@ body{
 }
 .note{ max-width:760px; color:var(--line-white-dim); font-size:0.8rem; text-align:center; margin-bottom:1.6rem; line-height:1.6; }
 .note b{ color:#E7D9B8; }
+.note.err{ color:#E8A0A0; }
 
 .spread{ position:relative; display:flex; box-shadow: 0 24px 50px rgba(2,8,18,0.5); border-radius:4px; overflow:visible; }
 
@@ -130,7 +141,8 @@ body{
   border-left:2px solid var(--thread);
   border-radius: 0 3px 3px 0;
   box-shadow: 2px 3px 6px rgba(2,8,18,0.35);
-  transition: none; /* 明确不用 transition/hover，状态由服务端渲染的 class 决定，不是交互动画 */
+  transition: none; /* 明确不用 transition/hover，状态由 JS 切换的 class 决定，不是交互动画 */
+  cursor:pointer;
 }
 .tab .txt{
   writing-mode: vertical-rl; text-orientation: mixed;
@@ -139,7 +151,7 @@ body{
 }
 .tab.active{ width:38px; box-shadow: 3px 4px 9px rgba(2,8,18,0.45); }
 .tab.active .txt{ color:#20293A; }
-/* 包浆磨损：只叠在被摸得最多的那片标签上（当前分册），颜色变深而不是"整体旧"， */
+/* 包浆磨损：只叠在被摸得最多的那片标签上，颜色变深而不是"整体旧"， */
 .tab::after{
   content:''; position:absolute; inset:0; border-radius:0 3px 3px 0; pointer-events:none;
   background: radial-gradient(ellipse at 70% 85%, rgba(90,58,20,var(--wear,0.15)) 0%, transparent 65%);
@@ -157,7 +169,8 @@ body{
 .toc-header .vol{ font-family:'Caveat',cursive; font-size:1.3rem; color:#5B3A1E; transform:rotate(-2deg); display:inline-block; }
 .toc-header .page-no{ font-size:0.68rem; color:#6b5a42; opacity:0.75; }
 
-.entries{ display:flex; flex-direction:column; gap:0.85rem; }
+.entries{ display:flex; flex-direction:column; gap:0.85rem; min-height:220px; }
+.entries .placeholder{ font-family:'Source Serif 4',serif; font-size:0.85rem; color:#6b5a42; opacity:0.8; }
 .entry{ position:relative; padding-left:0.1em; }
 .entry .title{ font-family:'Caveat',cursive; font-weight:700; font-size:1.5rem; color:#20293A; display:inline-block; margin-right:0.5em; }
 .entry .date{ font-family:'Caveat',cursive; font-size:1rem; color:#8a6a3a; opacity:0.85; display:inline-block; transform:rotate(-4deg); margin-left:0.3em; }
@@ -170,9 +183,12 @@ body{
 </style>
 </head>
 <body>
-  <p class="note">
-    <b>步骤3剩余项 · 书脊分册标签</b> —— 验证"按年/季度分册、书脊标签切换"的视觉呈现。
-    <b>纯静态展示，点击切换的交互还没接（属于步骤4/6范围）</b>；标签数量/文案/磨损参数均为占位判断，未与站长确认。
+  <p class="note" id="note">
+    <b>步骤3剩余项 · 书脊分册标签（步骤4前端对接版）</b> —— 标签和目录条目已换成
+    <code>fetch('/api/notebook/volumes')</code> / <code>fetch('/api/notebook/toc?...')</code>
+    读到的真实数据；点击标签会切换分册并重新拉取目录。<b>只取了每个分册的第 1 页，
+    翻页控件和步骤5"哗啦啦翻页"动效还没接，点目录条目暂时没有反应。</b>
+    磨损参数（哪本更旧磨损更浅）沿用原有未确认判断题，未与站长确认。
   </p>
   <div class="spread">
     <div class="cover-page">
@@ -184,32 +200,115 @@ body{
       <div class="ribbon"></div>
     </div>
     <div class="gutter">
-      <div class="spine-tabs">
-        ${VOLUMES.map((v) => `
-        <div class="tab${v.active ? ' active' : ''}" style="--wear:${v.wear}">
-          <span class="txt">${v.label}</span>
-        </div>`).join('')}
+      <div class="spine-tabs" id="spineTabs">
+        <!-- JS 运行时按 /api/notebook/volumes 的结果动态填充 -->
       </div>
     </div>
     <div class="toc-page">
       <div class="toc-header">
-        <span class="vol">2026 · 秋</span>
-        <span class="page-no">— 14 —</span>
+        <span class="vol" id="volLabel">—</span>
+        <span class="page-no" id="pageNo">— 1 —</span>
       </div>
-      <div class="entries">
-        ${ENTRIES.map((e) => `
-        <div class="entry" data-has-image="${!!e.hasImage}">
-          ${e.hasImage ? '<div class="thumb"></div>' : ''}
-          <span class="title">${e.title}</span><span class="date">${e.date}</span>
-          <span class="excerpt">${e.excerpt}</span>
-        </div>`).join('')}
+      <div class="entries" id="entries">
+        <span class="placeholder">加载中…</span>
       </div>
     </div>
   </div>
   <p class="caption">
-    当前分册（2026·秋）标签伸出更多、颜色也更深——因为这是被翻得最多的一册，磨损该最重，
-    不是"最新=最干净"。历史册子标签依次收进去、颜色转淡。
+    当前分册标签伸出更多、颜色也更深——因为设定上这是被翻得最多的一册，磨损该最重，
+    不是"最新=最干净"。点击任意标签可以切换到该分册看真实目录（第1页）。
   </p>
+
+<script>
+(function () {
+  var QUARTER_LABEL = { 1: '春', 2: '夏', 3: '秋', 4: '冬' };
+  var tabsEl = document.getElementById('spineTabs');
+  var entriesEl = document.getElementById('entries');
+  var volLabelEl = document.getElementById('volLabel');
+  var pageNoEl = document.getElementById('pageNo');
+  var noteEl = document.getElementById('note');
+
+  function showFetchError(msg) {
+    noteEl.classList.add('err');
+    noteEl.innerHTML = '<b>加载真实数据失败：</b>' + msg +
+      '。这个原型现在依赖同源的 /api/notebook/* 接口，需要先 <code>npm run dev</code> 跑起来，' +
+      '再打开 <code>http://localhost:3000/dev/notebook/spine-tabs-prototype.html</code>' +
+      '（双击本地文件直接打开会因为跨源被拦掉，不是接口坏了）。';
+  }
+
+  function renderTabs(volumes, activeIndex) {
+    tabsEl.innerHTML = '';
+    var n = volumes.length;
+    volumes.forEach(function (v, i) {
+      // 磨损：按"新旧顺序"线性插值，最新 0.85，最旧 0.12——固定属性，不随点击变化。
+      var wear = n <= 1 ? 0.85 : (0.85 - (0.85 - 0.12) * (i / (n - 1)));
+      var tab = document.createElement('div');
+      tab.className = 'tab' + (i === activeIndex ? ' active' : '');
+      tab.style.setProperty('--wear', wear.toFixed(2));
+      var txt = document.createElement('span');
+      txt.className = 'txt';
+      txt.textContent = v.year + '\u00b7' + (QUARTER_LABEL[v.quarter] || v.quarter);
+      tab.appendChild(txt);
+      tab.addEventListener('click', function () {
+        selectVolume(volumes, i);
+      });
+      tabsEl.appendChild(tab);
+    });
+  }
+
+  function renderEntries(data) {
+    volLabelEl.textContent = data.year + ' \u00b7 ' + (QUARTER_LABEL[data.quarter] || data.quarter);
+    pageNoEl.textContent = '\u2014 ' + data.page + ' / ' + data.totalPages + ' \u2014';
+    entriesEl.innerHTML = '';
+    if (!data.entries.length) {
+      entriesEl.innerHTML = '<span class="placeholder">这个分册还没有文章。</span>';
+      return;
+    }
+    data.entries.forEach(function (e) {
+      var d = new Date(e.date);
+      var dateStr = (d.getMonth() + 1) + '.' + d.getDate();
+      var div = document.createElement('div');
+      div.className = 'entry';
+      div.setAttribute('data-has-image', e.hasImage ? 'true' : 'false');
+      div.innerHTML =
+        (e.hasImage ? '<div class="thumb"></div>' : '') +
+        '<span class="title"></span><span class="date"></span>' +
+        '<span class="excerpt"></span>';
+      div.querySelector('.title').textContent = e.title;
+      div.querySelector('.date').textContent = dateStr;
+      div.querySelector('.excerpt').textContent = e.excerpt || '';
+      entriesEl.appendChild(div);
+    });
+  }
+
+  function selectVolume(volumes, index) {
+    renderTabs(volumes, index);
+    var v = volumes[index];
+    entriesEl.innerHTML = '<span class="placeholder">加载中…</span>';
+    fetch('/api/notebook/toc?year=' + v.year + '&quarter=' + v.quarter + '&page=1')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(renderEntries)
+      .catch(function (err) { showFetchError(err.message); });
+  }
+
+  fetch('/api/notebook/volumes')
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      if (!data.volumes.length) {
+        entriesEl.innerHTML = '<span class="placeholder">还没有已发布的文章分册。</span>';
+        return;
+      }
+      selectVolume(data.volumes, 0); // 默认打开最新一册（接口按新到旧排序）
+    })
+    .catch(function (err) { showFetchError(err.message); });
+})();
+</script>
 </body>
 </html>
 `;

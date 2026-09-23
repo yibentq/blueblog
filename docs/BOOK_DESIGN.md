@@ -123,8 +123,9 @@ blog.blue 学着做。标题/批注允许用比连笔签名更活泼的艺术字
       还没接——严格说仍不算"完成"，只是从"没做"推进到"有原型待审"）
 - [~] 步骤 4：目录翻页交互（真实数据接入，服务端兜底列表）——**后端三个只读接口已实现并用临时库
       验证（跨季度分组、草稿过滤、边界参数、首页兜底均测过）**，见 `src/routes/public.js`
-      `/api/notebook/*`；**前端还没接**：`experiments/notebook-spread/` 里的原型仍在用假数据，
-      没有换成真实 fetch，也没有把封面/跨页/翻页动效整合到一起指向这三个接口
+      `/api/notebook/*`；**前端接了一片**：书脊分册标签原型（`build-spine-tabs-prototype.js`）
+      已换成真实 fetch + 点击切换分册，仅开发环境路由 `/dev/notebook/*` 可同源预览；
+      `spread-prototype.html`/`flip-transition-prototype.html` 仍在用假数据，没有整合到一起
 - [~] 步骤 5：点击进入全文的翻页动效（`experiments/notebook-spread/README.md`）——
       **动效原型已做，但用假数据/假延迟触发**，步骤4接入真实数据后需要重新接线；
       站长看过后未给具体反馈即要求先提交，不代表定稿
