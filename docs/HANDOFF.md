@@ -16,7 +16,7 @@
   - **v3.1** 卡片质感分层修正（`8f279a7`）—— 站长反馈"卡片和桌面同一种粗粒皮革，视觉疲劳、抓不住主体"，改成中心细腻 + 边缘粗粒
   - **v4** 评论审核重做，文章与评论绑定（`0fd5576`）
 - **等站长在线上确认的**：评论收件箱的实际手感（键盘操作、撤销）、卡片质感是否合意、字体（Google Fonts）在真机上的观感。这些我在自动化测试里验证了逻辑，但**手感和观感只有站长能判断**——如果站长有反馈，按反馈迭代，别推翻重来。
-- **`docs/BOOK_DESIGN.md`（首页"翻书"改版）2026-09-22 曾被否决又于 2026-09-23 重新提起，目前重启中**——封面已定稿，设计决策见 `experiments/notebook-cover/README.md`；封面之外，站长指定跳过步骤3/4的剩余细节先做步骤5（翻页动效），目前进度和坑见 `experiments/notebook-spread/README.md`（步骤3剩余项原型、步骤4前后端对接、步骤5动效均已有记录），历史见本文件 v5、v6 两节。**这两份 README 都比本节新**，看到这份文档时以它们的最新记录为准，不要以为还停在"只做到封面"或"已取消"。
+- `docs/BOOK_DESIGN.md`（首页“翻书”改版）2026-09-22 曾被否决又于 2026-09-23 重新提起，**这一天内又推进了一大截**：封面定稿（`experiments/notebook-cover/README.md`）→ 跨页原型+步骤3剩余项+步骤4前后端对接+步骤5动效（`experiments/notebook-spread/README.md`，历史见本文件 v5、v6 两节）→ **步骤6/7正式接入真实首页**（本文件 v7 节，也是当前最新）。**`docs/BOOK_DESIGN.md` 第11节 + 本文件 v7 节是当前最新状态**，翻书功能现在挂在真实的 `/` 首页第1页上了，不再只是 `/dev/notebook/*` 里的独立原型。
 
 ### 2. 项目地图（一句话版）
 
@@ -77,6 +77,88 @@ cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm insta
 - 水印：老图不补新水印；没有"原图存一份、对外给带水印版"；签名无中文版/单色印刷版（v2）
 - 后台目前是纯色 UI（没上皮革质感，后台优先好用）；旧视图里失效的行内 style 可以顺手清理
 - 站长确认后的收尾：把"等站长确认"里的项目根据反馈更新成结论
+
+---
+
+## v7 · 2026-09-23 · 翻书改版：步骤6/7 + 正式接入真实首页
+
+### 发生了什么
+
+`experiments/notebook-spread/` 里几轮原型（书脊分册标签、跨页目录、点击进入全文的翻页动效）
+一直只挂在需要登录才能看的 `/dev/notebook/*` 预览路由下，首页 `/` 本身没有变化。这一轮把它
+**正式接进真实首页**，同时补上了执行计划里还没做的步骤6（标签/搜索便签系统）和步骤7（图片
+装饰系统接入真实上传图片）。
+
+### 改了哪些文件
+
+- **新增**：`src/utils/notebook.js`（确定性 hash 分配：内页材质/图片装饰方式/胶带角度）、
+  `public/js/notebook.js`（首页翻书 UI 的全部前端逻辑）、`views/partials/notebook.ejs`
+  （翻书 DOM 结构）、`public/css/notebook.css`（翻书视觉样式）、
+  `tools/build-notebook-textures.js`（内页材质生成脚本，移进仓库，算法未改）、
+  `public/img/notebook/page-P0-clean-v1.webp` ~ `page-P4-handling-patina-v1.webp`（生成产物）。
+- **修改**：
+  - `src/models/tag.js` 新增 `listAllPublic`（公开标签云：只统计已发布文章、过滤 0 篇的空标签）。
+  - `src/models/post.js` 新增 `searchPublished`（标题/摘要 `ILIKE` 子串匹配，`limit` 固定 8）。
+  - `src/routes/public.js`：首页路由 `/` 现在会算 `notebookEnabled`（仅首页第1页为真）和
+    `notebook`（品牌签名 SVG，深/浅两版）传给模板；新增 `GET /api/notebook/tags`、
+    `GET /api/notebook/search`；已有的 `/api/notebook/volumes`、`/toc`、`/article/:slug`、
+    `/article/:slug/view` 未改动。
+  - `views/index.ejs`：`#plain-post-list` 包住原有服务端渲染列表（无 JS/爬虫/移动端兜底），
+    `notebookEnabled` 为真时额外 `include('partials/notebook')`。
+  - `views/partials/head.ejs`：`notebookEnabled` 为真时才加载 Caveat 字体和 `notebook.css`
+    （不拖慢文章页/标签页）。
+  - `public/css/style.css`：补了 `.empty-hint` 这个小遗漏（之前"没有文章"的提示文字是行内
+    `style="..."`，在生产 CSP 下不生效，现在用 class）。
+  - `package.json`：新增 `notebook:textures` 脚本。
+
+### 验证过什么（真实数据库，不是只读代码）
+
+沙箱内装了一次性 PostgreSQL 16，跑了 `npm run migrate`、`npm run seed`，又手工插入 15 篇跨两个
+季度、带标签和封面图的测试文章，起了真实 `src/app.js`，用 curl 验证：
+
+- `notebookEnabled` 只在首页第1页为真：`/` 有 `#notebook-book`，`/?page=2` 和 `/tag/life` 都没有。
+- 六个 `/api/notebook/*` 接口全部返回正确结构：`volumes`（按年季度分组）、`toc`（含
+  `pageTexture` 和每条目录的 `decoration`/`tapeAngle`）、`tags`、`search`、`article/:slug`、
+  `article/:slug/view`；边界情况对：`quarter=9` 返回 400，越界分页返回空 `entries` 而非报错，
+  不存在的 slug 返回 404。
+- `POST /api/notebook/article/:slug/view` 真的让 `posts.view_count` +1。
+- `/dev/notebook/*` 未登录访问返回 302 跳 `/admin/login`（`requireAuth` 沿用不变）。
+- 静态资源都能正常拿到：`/css/notebook.css`、`/js/notebook.js`、
+  `/img/notebook/page-P0-clean-v1.webp`。
+- 回归测了没被这轮改动波及的路由：`/feed.xml`、`/sitemap`、`/sitemap.xml`、`/p/:slug`、
+  `/robots.txt`、404 页面，全部 200/预期状态码。
+
+### 没做 / 没验证的（老实说，比 v3/v4 那两轮验证得浅）
+
+- **一张视觉截图都没有**：沙箱依旧装不了 Playwright 的 headless Chromium（`experiments/
+  notebook-spread/README.md` 好几轮都提过同一个环境限制），这轮全部验证停在"接口数据对、
+  DOM 结构对"，翻书本体的实际观感——纸张痕迹材质是否可辨识、胶带/拍立得/大头针装饰是否可信、
+  标签便签"掀开一角"的动效顺不顺——一次都没有被看过。**这是部署后最需要站长亲自确认的部分**。
+- 步骤6的便签样式池按第5节规格应该是"方形便签、卡片式索引卡、书签丝带、回形针夹的小纸条"
+  四种随机分配，这轮只做了固定搭配（标签配索引卡、搜索配回形针纸条），没做另外两种样式、
+  也没做随机分配——两个便签谈"随机分配"意义有限，先按最省事的方式接了，如果站长想要更多
+  样式差异化需要重做。
+- 步骤9（整体走查，对照第2节禁忌清单逐条检查）完全没动，是下一轮必须做的收尾。
+- 移动端隔离靠已有的 CSS 媒体查询（`max-width:640px` 强制 `display:none`）验证了逻辑存在，
+  但没有真机/多浏览器测试过实际断点手感。
+
+### 部署
+
+```bash
+cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm install && sudo -u blogblue npm run migrate && sudo -u blogblue pm2 restart blog-blue
+```
+
+没有新的数据库迁移（这轮没碰 schema），标准部署命令就够。**新增了一个环境变量无关的一次性
+资源生成步骤**——`public/img/notebook/*.webp` 这五张图已经跟着这次提交一起进了仓库（和
+`leather-*-v1.webp` 同一套约定），`git pull` 之后不需要在服务器上再跑
+`npm run notebook:textures`，除非以后要改材质配方换版本号。
+
+### 给接手的人
+
+- 这次是在 `docs/BOOK_DESIGN.md` 第11节和上面"没做/没验证的"里已经写清楚的收尾工作，
+  不要重复分析一遍，直接从那两处的清单接着做。
+- **第一件事应该是站长打开首页实际看一遍**——这轮完全没有视觉反馈闭环，接手者不要在没有
+  站长审美确认之前就假设步骤6/7的具体样式（便签造型、装饰细节）是定的。
 
 ---
 

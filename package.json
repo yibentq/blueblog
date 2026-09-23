@@ -9,7 +9,8 @@
     "migrate": "node db/migrate.js",
     "seed": "node db/seed.js",
     "wm:verify": "node tools/verify-watermark.js",
-    "leather": "node tools/build-leather.js"
+    "leather": "node tools/build-leather.js",
+    "notebook:textures": "node tools/build-notebook-textures.js"
   },
   "engines": {
     "node": ">=18.0.0"

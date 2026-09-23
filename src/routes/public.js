@@ -6,6 +6,8 @@ const tagModel = require('../models/tag');
 const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
 const { requireAuth } = require('../middleware/auth');
+const { buildSignature } = require('../utils/brand');
+const { pickPageTexture, pickImageDecoration, pickTapeAngle } = require('../utils/notebook');
 
 function siteUrl() {
   return (process.env.SITE_URL || '').replace(/\/$/, '');
@@ -21,10 +23,20 @@ router.get('/', async (req, res, next) => {
       postModel.listPublished({ page, perPage }),
       postModel.countPublished(),
     ]);
+    // 首页"翻书"视觉层只在真正的首页第1页启用（不含标签页、不含深链到第2页及以后）——
+    // 范围限定见 docs/BOOK_DESIGN.md 第0节"仅改动桌面端"；这是视觉增强层，
+    // 底下这份 posts/totalPages 服务端渲染列表照常传给模板，无 JS/爬虫看到的还是它，
+    // 翻书只是 JS 在桌面宽度下把它换皮，不影响这里的数据。
+    const notebookEnabled = page === 1;
+    const notebook = notebookEnabled ? {
+      sigDark: buildSignature({ width: 260, ink: '#16233A' }).svg,
+      sigLight: buildSignature({ width: 260, ink: '#FBF6E8', opacity: 0.5 }).svg,
+    } : null;
     res.render('index', {
       posts, page, totalPages: Math.max(1, Math.ceil(total / perPage)),
       tagSlug: null, tagName: null, basePath: '/',
       pageTitle: null, pageDescription: process.env.SITE_DESCRIPTION,
+      notebookEnabled, notebook,
     });
   } catch (err) { next(err); }
 });
@@ -45,6 +57,7 @@ router.get('/tag/:slug', async (req, res, next) => {
       posts, page, totalPages: Math.max(1, Math.ceil(total / perPage)),
       tagSlug: tag.slug, tagName: tag.name, basePath: `/tag/${tag.slug}`,
       pageTitle: `标签：${tag.name}`, pageDescription: `打了「${tag.name}」标签的文章`,
+      notebookEnabled: false, notebook: null, // 翻书视觉层只在真正首页启用，标签页保留原卡片列表
     });
   } catch (err) { next(err); }
 });
@@ -99,10 +112,12 @@ router.post('/p/:slug/comments', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ---- 首页"翻书"改版用的 JSON 接口（步骤4：目录翻页接入真实数据） ----
-// 注意：这三个接口只读已发布文章，不含权限校验，和 /feed.xml 一个安全等级。
+// ---- 首页"翻书"改版用的 JSON 接口 ----
+// 注意：这些接口只读已发布文章，不含权限校验，和 /feed.xml 一个安全等级。
 // 首页本体 `/` 的服务端渲染列表不受这几个接口影响——那才是无 JS / 爬虫看到的兜底，
-// 这里是纯粹给桌面端翻书视觉层用的数据源，前端还没接（见 experiments/notebook-spread/）。
+// 这里是纯粹给桌面端翻书视觉层用的数据源。步骤4-6全部完成后，正式接入了
+// public/js/notebook.js + views/partials/notebook.ejs（首页 `/` 桌面端会直接用到，
+// 不再只是 experiments/ 里的原型预览）。
 
 // 书脊分册标签：有文章的年/季度列表，新到旧
 router.get('/api/notebook/volumes', async (req, res, next) => {
@@ -129,12 +144,48 @@ router.get('/api/notebook/toc', async (req, res, next) => {
     res.json({
       year, quarter, page, perPage, total,
       totalPages: Math.max(1, Math.ceil(total / perPage)),
-      entries: entries.map((p) => ({
-        slug: p.slug,
-        title: p.title,
-        excerpt: p.summary,
-        date: p.published_at,
-        hasImage: !!p.cover_image,
+      // 内页痕迹材质：按"物理页"（年+季度+页码）分配，不是按单篇文章——一页纸上的
+      // 4~6篇文章共享同一张纸，不能一篇一个材质，那样看着像拼贴而不是同一本书
+      // （docs/BOOK_DESIGN.md 第10节 + src/utils/notebook.js）。
+      pageTexture: pickPageTexture(`${year}-Q${quarter}-p${page}`),
+      entries: entries.map((p) => {
+        const decoration = p.cover_image ? pickImageDecoration(p.id) : null;
+        return {
+          slug: p.slug,
+          title: p.title,
+          excerpt: p.summary,
+          date: p.published_at,
+          hasImage: !!p.cover_image,
+          // 步骤7：真实图片装饰系统——把实际上传的封面图 URL 和确定性分配的装饰方式
+          // 一起给前端，不再是占位色块。装饰方式/角度按文章 id 算 hash，同一篇文章
+          // 每次显示的贴法一致（docs/BOOK_DESIGN.md 第4节明确要求），不是每次刷新都变。
+          coverImage: p.cover_image || null,
+          decoration,
+          tapeAngle: decoration === 'tape' ? pickTapeAngle(p.id) : null,
+        };
+      }),
+    });
+  } catch (err) { next(err); }
+});
+
+// 标签便签用：标签云（只统计已发布文章，见 tagModel.listAllPublic 的说明）
+router.get('/api/notebook/tags', async (req, res, next) => {
+  try {
+    const tags = await tagModel.listAllPublic();
+    res.json({ tags });
+  } catch (err) { next(err); }
+});
+
+// 搜索便签用：标题/摘要子串匹配，只读已发布文章，结果条数固定给个小上限（postModel.searchPublished）
+router.get('/api/notebook/search', async (req, res, next) => {
+  try {
+    const q = (req.query.q || '').toString().slice(0, 100); // 防止超长查询串
+    if (!q.trim()) return res.json({ q: '', results: [] });
+    const rows = await postModel.searchPublished(q, 8);
+    res.json({
+      q,
+      results: rows.map((p) => ({
+        slug: p.slug, title: p.title, excerpt: p.summary, date: p.published_at,
       })),
     });
   } catch (err) { next(err); }

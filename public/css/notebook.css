@@ -1,0 +1,261 @@
+/* ============================================================
+   首页"翻书"改版 · 视觉增强层
+   只在真正首页第1页加载（见 src/routes/public.js notebookEnabled）。
+   渐进增强：默认 [hidden]，只有桌面宽度 + JS 可用时 notebook.js 才会揭开它、
+   同时隐藏 #plain-post-list。移动端/无JS/爬虫看到的永远是后者。
+   颜色全部复用 style.css 的 :root 变量，不新开一套色板——
+   docs/BOOK_DESIGN.md 第1节要求"材质和语言"延续蓝图设定，不能自成一派。
+   ============================================================ */
+
+main.has-notebook { max-width: 780px; }
+
+.notebook { margin: 1.5rem 0 3rem; }
+/* 双保险：就算 JS 出 bug 在移动宽度下也 unhide 了，这条媒体查询也会把它按住——
+   docs/BOOK_DESIGN.md 第0节"仅改动桌面端"是硬约束，不能只靠 JS 一层把关。 */
+@media (max-width: 640px) {
+  .notebook { display: none !important; }
+}
+
+.nb-error {
+  color: #E8A0A0; font-size: 0.85rem; text-align: center; margin: 0 0 1rem;
+}
+
+.nb-spread {
+  position: relative; display: flex; justify-content: center;
+  filter: drop-shadow(0 22px 40px rgba(2, 8, 18, 0.55));
+}
+
+/* ---------- 左页：封面（线上贴图 + 真实品牌签名，复用 experiments/notebook-cover 定稿方案） ---------- */
+.nb-cover {
+  position: relative; width: 260px; height: 354px; flex: none;
+  background-color: var(--paper);
+  background-image: var(--leather-calf);
+  background-size: cover; background-position: 40% 30%;
+  border-radius: 4px 0 0 4px;
+  z-index: 2;
+}
+.nb-cover::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background-image: var(--leather-cream); background-size: 380px 380px; opacity: 0.8;
+  -webkit-mask-image:
+    linear-gradient(90deg, #000 0, transparent 36px, transparent calc(100% - 36px), #000 100%),
+    linear-gradient(180deg, #000 0, transparent 36px, transparent calc(100% - 36px), #000 100%);
+  mask-image:
+    linear-gradient(90deg, #000 0, transparent 36px, transparent calc(100% - 36px), #000 100%),
+    linear-gradient(180deg, #000 0, transparent 36px, transparent calc(100% - 36px), #000 100%);
+}
+.nb-cover-stitch {
+  position: absolute; top: 10px; bottom: 10px; right: 10px; width: 2px; pointer-events: none;
+  background: repeating-linear-gradient(180deg, var(--thread) 0 7px, transparent 7px 12px);
+  filter: drop-shadow(0 1px 0 var(--thread-shadow)); opacity: 0.9;
+}
+.nb-emblem { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); width: 165px; }
+.nb-emblem-light { position: absolute; top: 1.6px; left: 1.6px; opacity: 0.5; }
+.nb-ribbon {
+  position: absolute; top: -4px; left: 56px; width: 9px; height: 112px; z-index: 5;
+  background: linear-gradient(90deg, #9C7A38, var(--thread) 45%, #E7C878 55%, var(--thread) 70%, #9C7A38);
+  clip-path: polygon(0 0, 100% 0, 100% 88%, 50% 100%, 0 88%);
+  box-shadow: 1px 2px 4px rgba(2, 8, 18, 0.35);
+}
+
+/* ---------- 装订缝 + 书脊分册标签 ---------- */
+.nb-gutter {
+  position: relative; width: 20px; flex: none; z-index: 3;
+  background: linear-gradient(90deg, rgba(0,0,0,0.32), rgba(0,0,0,0.06) 40%, rgba(0,0,0,0.06) 60%, rgba(0,0,0,0.32));
+}
+.nb-spine-tabs { position: absolute; left: 0; top: 40px; width: 100%; }
+.nb-tab {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  height: 38px; width: 24px; left: 10px; margin-bottom: 8px;
+  background: linear-gradient(90deg, #E4D6AE, var(--paper) 60%);
+  border: 1px solid rgba(74, 46, 10, 0.35); border-left: 2px solid var(--thread);
+  border-radius: 0 3px 6px 0;
+  box-shadow: 2px 3px 6px rgba(2, 8, 18, 0.35);
+  cursor: pointer; font: inherit; padding: 0;
+  /* 明确不设 transition——"当前"状态靠伸出长度和磨损两个静态信号表达，
+     不是数字界面式的 hover/发光反馈（docs/BOOK_DESIGN.md 第2节禁忌1）。 */
+}
+.nb-tab .nb-tab-txt {
+  writing-mode: vertical-rl; text-orientation: mixed;
+  font-family: 'Caveat', cursive; font-weight: 700; font-size: 0.92rem; color: #3a2c16;
+}
+.nb-tab.active { width: 36px; box-shadow: 3px 4px 9px rgba(2, 8, 18, 0.45); }
+.nb-tab.active .nb-tab-txt { color: var(--ink-on-paper); }
+.nb-tab::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(ellipse at 70% 85%, rgba(90, 58, 20, var(--nb-wear, 0.15)) 0%, transparent 65%);
+}
+
+/* ---------- 右页：目录 ---------- */
+.nb-toc-page {
+  position: relative; width: 340px; min-height: 408px; flex: none;
+  background-size: cover; border-radius: 0 4px 4px 0;
+  padding: 1.5rem 1.4rem 3.4rem; color: var(--ink-on-paper);
+  transform-origin: left center; backface-visibility: hidden;
+  overflow: visible;
+}
+.nb-toc-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.85rem; }
+.nb-vol { font-family: 'Caveat', cursive; font-size: 1.25rem; color: var(--brass-dim); transform: rotate(-2deg); display: inline-block; }
+.nb-page-no { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-on-paper-dim); opacity: 0.8; }
+
+.nb-entries { display: flex; flex-direction: column; gap: 0.8rem; min-height: 220px; }
+.nb-placeholder { font-family: var(--font-body); font-size: 0.85rem; color: var(--ink-on-paper-dim); margin: 0; }
+
+.nb-entry { position: relative; padding-left: 0.05em; }
+.nb-entry:nth-child(2) { margin-left: 12px; }
+.nb-entry:nth-child(3) { margin-left: -4px; }
+.nb-entry:nth-child(4) { margin-left: 8px; }
+.nb-entry:nth-child(5) { margin-left: -2px; }
+.nb-entry:nth-child(6) { margin-left: 10px; }
+
+.nb-entry-title {
+  display: inline-block; margin: 0 0.5em 0 0; padding: 0; border: none; background: none; cursor: pointer;
+  font-family: 'Caveat', cursive; font-weight: 700; font-size: 1.42rem; color: var(--ink-on-paper);
+  text-align: left;
+}
+.nb-entry:nth-child(odd) .nb-entry-title { transform: rotate(-0.6deg); }
+.nb-entry:nth-child(even) .nb-entry-title { transform: rotate(0.7deg); }
+.nb-entry-date {
+  font-family: 'Caveat', cursive; font-size: 0.98rem; color: var(--brass-dim); opacity: 0.9;
+  display: inline-block; transform: rotate(-4deg); margin-left: 0.25em;
+}
+.nb-entry-excerpt {
+  display: block; font-family: var(--font-body); font-size: 0.82rem; color: var(--ink-on-paper-dim);
+  line-height: 1.5; margin-top: 0.1rem; max-width: 90%;
+}
+.nb-entry[data-has-image="true"] { padding-right: 50px; }
+
+/* ---- 步骤7：真实图片装饰（胶带/拍立得/大头针），纯 CSS 伪元素+滤镜+阴影，不额外发图片请求 ---- */
+.nb-thumb { position: absolute; right: 2px; top: -6px; width: 46px; height: 46px; }
+.nb-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.nb-thumb.deco-polaroid {
+  background: #FBF8F0; padding: 4px 4px 12px; width: 52px; height: 58px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3); transform: rotate(-3deg);
+}
+.nb-thumb.deco-polaroid img { width: 44px; height: 38px; }
+
+.nb-thumb.deco-tape { box-shadow: 0 2px 6px rgba(0,0,0,0.28); }
+.nb-thumb.deco-tape::before {
+  /* 胶带：中段颜色变化最小、两端轻微卷起发黄——用一个渐变条 + 端头更浅更不透明模拟 */
+  content: ''; position: absolute; left: -10px; right: -10px; top: -8px; height: 16px;
+  background: linear-gradient(90deg,
+    rgba(232, 214, 160, 0.55) 0%, rgba(232, 214, 160, 0.32) 12%,
+    rgba(232, 214, 160, 0.28) 50%,
+    rgba(232, 214, 160, 0.32) 88%, rgba(232, 214, 160, 0.55) 100%);
+  transform: rotate(var(--nb-tape-angle, -5deg));
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+
+.nb-thumb.deco-pin { box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
+.nb-thumb.deco-pin::before {
+  /* 大头针的锈斑晕染：比针本身大一圈的橙褐色radial-gradient，模拟"化学反应式"的旧痕 */
+  content: ''; position: absolute; left: 50%; top: -3px; width: 22px; height: 22px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(150, 80, 30, 0.35) 0%, rgba(150, 80, 30, 0.12) 55%, transparent 75%);
+}
+.nb-thumb.deco-pin::after {
+  content: ''; position: absolute; left: 50%; top: 1px; width: 7px; height: 7px; border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 35% 30%, #d8d8d8, #8a8a8a 60%, #5a5a5a);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+/* ---------- 翻页按钮 ---------- */
+.nb-pager {
+  position: absolute; left: 1.4rem; right: 1.4rem; bottom: 0.9rem;
+  display: flex; justify-content: space-between;
+}
+.nb-pager-btn {
+  font-family: var(--font-body); font-size: 0.8rem; color: var(--ink-on-paper);
+  background: rgba(255,255,255,0.25); border: 1px solid rgba(74,46,10,0.25); border-radius: 3px;
+  padding: 0.3rem 0.75rem; cursor: pointer;
+}
+.nb-pager-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* ---------- 标签/搜索便签 ---------- */
+.nb-note { position: absolute; z-index: 6; }
+.nb-note-tags { top: -14px; right: 46px; }
+.nb-note-search { top: 34px; left: -16px; }
+
+.nb-note-tab {
+  display: flex; align-items: center; gap: 0.3em; cursor: pointer; font: inherit;
+  border: 1px solid rgba(74, 46, 10, 0.3); border-radius: 3px 3px 0 0;
+  padding: 0.35rem 0.6rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-on-paper);
+}
+/* 索引卡样式（标签便签）：顶缘露出，几条横线暗示"这是索引卡" */
+.nb-note-tags .nb-note-tab {
+  background: linear-gradient(180deg, #FBF6E8, #EFE3C8);
+  box-shadow: 0 -2px 0 rgba(0,0,0,0.05) inset, 0 2px 6px rgba(2,8,18,0.25);
+}
+.nb-note-tags .nb-note-tab-icon { color: var(--brass-dim); font-weight: 700; }
+/* 回形针夹纸条样式（搜索便签）：左缘露出，回形针用 inline SVG 描边体现在 icon 位置 */
+.nb-note-search .nb-note-tab {
+  background: #F6EFE0; border-radius: 0 3px 3px 0; transform: rotate(-1.5deg);
+  box-shadow: 2px 2px 6px rgba(2,8,18,0.25);
+}
+.nb-note-search .nb-note-tab-icon { border: 2px solid #9aa; border-radius: 2px; width: 0.9em; height: 1.1em; display: inline-block; }
+
+.nb-note-drawer {
+  position: absolute; top: 100%; z-index: 7; width: 200px;
+  background: #FBF6E8; border: 1px solid rgba(74, 46, 10, 0.3); border-radius: 0 0 4px 4px;
+  box-shadow: 0 10px 24px rgba(2, 8, 18, 0.4); padding: 0.75rem 0.8rem;
+}
+.nb-note-tags .nb-note-drawer { right: 0; }
+.nb-note-search .nb-note-drawer { left: 0; }
+.nb-note-drawer-title {
+  margin: 0 0 0.5rem; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em;
+  color: var(--ink-on-paper-dim); text-transform: uppercase;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* "掀开一角"式展开，不是 hover 弹出——只在点击后触发一次，贴近真实翻开纸角的动作 */
+  .nb-note-drawer:not([hidden]) { animation: nb-note-open 0.22s ease-out; transform-origin: top center; }
+  @keyframes nb-note-open {
+    from { opacity: 0; transform: rotateX(-25deg) translateY(-6px); }
+    to { opacity: 1; transform: rotateX(0) translateY(0); }
+  }
+}
+
+.nb-tag-cloud { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.nb-tag-chip {
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--blue-700); text-decoration: none;
+  background: rgba(29, 78, 137, 0.08); border-radius: 2px; padding: 0.15rem 0.4rem;
+}
+.nb-tag-chip .nb-tag-count { opacity: 0.6; }
+
+.nb-search-input {
+  width: 100%; font-family: var(--font-body); font-size: 0.85rem; color: var(--ink-on-paper);
+  background: var(--paper); border: 1px solid rgba(74, 46, 10, 0.3); border-radius: 2px; padding: 0.3rem 0.5rem;
+}
+.nb-search-results { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; max-height: 180px; overflow-y: auto; }
+.nb-search-results a { font-size: 0.82rem; color: var(--blue-700); text-decoration: none; }
+.nb-search-hint { font-size: 0.76rem; color: var(--ink-on-paper-dim); margin: 0; }
+
+/* ---------- 点击目录条目 → 全文页：哗啦啦翻页动效舞台 ---------- */
+.nb-stage {
+  position: fixed; inset: 0; z-index: 80; display: none; align-items: center; justify-content: center;
+  background: rgba(6, 16, 30, 0.72); perspective: 1600px;
+}
+.nb-stage.active { display: flex; }
+.nb-flying-page {
+  position: absolute; width: 300px; height: 420px; border-radius: 2px; background-size: cover;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5); transform-origin: left center; opacity: 0;
+}
+.nb-dest {
+  position: relative; width: 480px; max-width: 92vw; max-height: 82vh; overflow-y: auto;
+  background: var(--paper); color: var(--ink-on-paper); border-radius: 3px; padding: 2rem;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55); opacity: 0;
+}
+.nb-dest.show { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .nb-dest.show { transition: opacity 0.15s ease-out; }
+}
+.nb-back-btn {
+  display: inline-block; margin-bottom: 1rem; cursor: pointer; border: none; background: none;
+  color: var(--blue-700); font-family: var(--font-body); font-size: 0.85rem; padding: 0;
+  text-decoration: underline;
+}
+.nb-back-btn:disabled { color: var(--ink-on-paper-dim); cursor: default; text-decoration: none; }
+.nb-dest-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; margin: 0 0 0.9rem; }
+.nb-dest-body { font-family: var(--font-body); font-size: 0.95rem; line-height: 1.7; }
+.nb-dest-body img { max-width: 100%; border-radius: var(--radius); }

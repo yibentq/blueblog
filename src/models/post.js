@@ -107,6 +107,23 @@ async function countByVolume(year, quarter) {
   return rows[0].n;
 }
 
+// ---- 首页"翻书"改版用（步骤6：标签/搜索便签系统里的搜索框）----
+// 只做 ILIKE 子串匹配（标题 + 摘要），个人博客量级用不上全文索引/tsvector，
+// 上限固定给个小 limit，避免搜索框输一个常见字就把全部文章都吐回来。
+async function searchPublished(q, limit = 8) {
+  const keyword = `%${String(q || '').trim()}%`;
+  if (keyword === '%%') return [];
+  const { rows } = await pool.query(
+    `SELECT slug, title, summary, published_at
+     FROM posts
+     WHERE status = 'published' AND (title ILIKE $1 OR summary ILIKE $1)
+     ORDER BY published_at DESC
+     LIMIT $2`,
+    [keyword, limit]
+  );
+  return rows;
+}
+
 // 给"站点地图"页用：全部已发布文章，只取轻量字段，按发布时间倒序，不分页
 // （个人博客量级下几百篇也就几十 KB，没必要为这个页面单独做分页）
 async function listAllPublishedForSitemap() {
@@ -209,7 +226,7 @@ async function setTags(postId, tagIds) {
 
 module.exports = {
   listPublished, countPublished, getPublishedBySlug, incrementViewCount, getTagsForPost,
-  listVolumes, listByVolume, countByVolume,
+  listVolumes, listByVolume, countByVolume, searchPublished,
   listAllPublishedForSitemap,
   listAll, countAll, getById, getBySlugAny, create, update, remove, setTags,
 };

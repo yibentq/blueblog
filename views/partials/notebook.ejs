@@ -1,0 +1,70 @@
+<section id="notebook-book" class="notebook" hidden aria-label="文章目录（手帐视图）">
+  <p id="nb-error" class="nb-error" hidden></p>
+
+  <div class="nb-spread">
+    <!-- 左页：封面，复用线上贴图 + 真实品牌签名（服务端渲染，不是画一个像的） -->
+    <div class="nb-cover">
+      <div class="nb-cover-stitch"></div>
+      <div class="nb-emblem">
+        <div class="nb-emblem-light"><%- notebook.sigLight %></div>
+        <div class="nb-emblem-dark"><%- notebook.sigDark %></div>
+      </div>
+      <div class="nb-ribbon"></div>
+    </div>
+
+    <!-- 装订缝：书脊分册标签挂在这里，点击切换分册 -->
+    <div class="nb-gutter">
+      <div class="nb-spine-tabs" id="nb-spine-tabs"></div>
+    </div>
+
+    <!-- 右页：目录，条目由 JS 渲染；便签贴在页面外围 -->
+    <div class="nb-toc-page" id="nb-toc-page">
+      <div class="nb-toc-header">
+        <span class="nb-vol" id="nb-vol-label">—</span>
+        <span class="nb-page-no" id="nb-page-no">—</span>
+      </div>
+      <div class="nb-entries" id="nb-entries" aria-live="polite">
+        <p class="nb-placeholder">加载中…</p>
+      </div>
+      <div class="nb-pager">
+        <button type="button" id="nb-prev" class="nb-pager-btn" disabled aria-label="上一页">‹ 上一页</button>
+        <button type="button" id="nb-next" class="nb-pager-btn" disabled aria-label="下一页">下一页 ›</button>
+      </div>
+
+      <!-- 标签/搜索便签：夹在目录页外围，露出一角，点击才展开（不用 hover） -->
+      <div class="nb-note nb-note-tags" id="nb-note-tags">
+        <button type="button" class="nb-note-tab" id="nb-note-tags-tab" aria-expanded="false" aria-controls="nb-note-tags-drawer">
+          <span class="nb-note-tab-icon" aria-hidden="true">#</span>
+          <span class="nb-note-tab-text">标签</span>
+        </button>
+        <div class="nb-note-drawer" id="nb-note-tags-drawer" hidden>
+          <p class="nb-note-drawer-title">按标签看</p>
+          <div class="nb-tag-cloud" id="nb-tag-cloud"><p class="nb-placeholder">加载中…</p></div>
+        </div>
+      </div>
+
+      <div class="nb-note nb-note-search" id="nb-note-search">
+        <button type="button" class="nb-note-tab" id="nb-note-search-tab" aria-expanded="false" aria-controls="nb-note-search-drawer">
+          <span class="nb-note-tab-icon" aria-hidden="true">⌕</span>
+          <span class="nb-note-tab-text">搜索</span>
+        </button>
+        <div class="nb-note-drawer" id="nb-note-search-drawer" hidden>
+          <p class="nb-note-drawer-title">搜索</p>
+          <input type="search" id="nb-search-input" class="nb-search-input" placeholder="标题或摘要…" autocomplete="off">
+          <div class="nb-search-results" id="nb-search-results"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 点击目录条目 → 全文页：哗啦啦翻过一叠纸的动效舞台，进入前不可见 -->
+  <div class="nb-stage" id="nb-stage" aria-hidden="true">
+    <div class="nb-flying-page" id="nb-fp0"></div>
+    <div class="nb-flying-page" id="nb-fp1"></div>
+    <div class="nb-flying-page" id="nb-fp2"></div>
+    <div class="nb-flying-page" id="nb-fp3"></div>
+    <div class="nb-dest" id="nb-dest" role="dialog" aria-modal="true" aria-label="文章全文"></div>
+  </div>
+</section>
+
+<script nonce="<%= cspNonce %>" src="/js/notebook.js?v=<%= assetVersion %>" defer></script>

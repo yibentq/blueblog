@@ -134,16 +134,38 @@ blog.blue 学着做。标题/批注允许用比连笔签名更活泼的艺术字
       加了返回目录动效+阅读量静默计数、`/dev/notebook/*` 预览路由改成登录校验、
       `spread-prototype.html` 目录页也接上了第6节讲的慢速物理翻页（上一页/下一页），
       这些都还没有站长的手感反馈，不代表定稿
-- [ ] 步骤 6：标签/搜索便签系统
-- [ ] 步骤 7：图片装饰系统接入真实上传图片（胶带/拍立得/大头针——大概率也需要用同一套"真实材质"
-      思路重做，不能再用 CSS 渐变凑数，这是第 10 节踩坑之后确认的教训）
-- [ ] 步骤 8：移动端隔离确认 + SEO/无 JS 兜底验证
-- [ ] 步骤 9：整体走查，对照第 2 节禁忌清单逐条检查
+- [x] 步骤 6：标签/搜索便签系统——已实现并接入真实首页（`tagModel.listAllPublic`、
+      `postModel.searchPublished`、`GET /api/notebook/tags`、`GET /api/notebook/search`，
+      前端见 `public/js/notebook.js` 的标签/搜索便签抽屉逻辑）。**未经站长审美确认**
+      （便签样式池目前只做了索引卡+回形针纸条两种，第5节说的"方形便签、书签丝带"两种
+      还没做，随机分配也还没接，见下方"给接手的人"）
+- [x] 步骤 7：图片装饰系统接入真实上传图片——胶带/拍立得/大头针三种装饰方式已按文章 id
+      做确定性 hash 分配（`src/utils/notebook.js` 的 `pickImageDecoration`/`pickTapeAngle`），
+      真实封面图 URL 由 `/api/notebook/toc` 返回，CSS 纯用伪元素+滤镜+阴影实现
+      （`public/css/notebook.css` 的 `.nb-thumb.deco-*`），**未额外发图片请求**。
+      **未经站长审美确认**——三种装饰的实际观感（尤其锈斑晕染、胶带卷边）没有截图验证过。
+- [~] 步骤 8：移动端隔离确认 + SEO/无 JS 兜底验证——**部分完成**。已验证：`main.has-notebook`
+      的 `max-width:640px` 媒体查询把 `.notebook` 强制 `display:none`（双保险，`notebook.css`
+      顶部注释里写的"就算 JS 出 bug 也按住"）；`#plain-post-list` 服务端渲染的真实
+      `<a href>`/`<h2>` 结构在 `notebookEnabled` 为真时依然原样输出，只是默认不隐藏、等 JS
+      检测到桌面宽度才隐藏它；`notebookEnabled` 只在首页第1页为真，分页/标签页不受影响
+      （用真实 Postgres + curl 验证过）。**没有验证**：真机/多浏览器视觉效果（沙箱下不了
+      Playwright headless Chromium，这是历次记录里反复出现的同一个环境限制，不是这次新踩的坑）、
+      屏幕阅读器下 `.notebook` 和 `#plain-post-list` 会不会被同时朗读两遍（两者是"互斥显示"
+      不是"互斥存在于 DOM"，`[hidden]` 元素默认不进无障碍树，理论上没问题，但没有用真实
+      屏幕阅读器测过）。
+- [ ] 步骤 9：整体走查，对照第 2 节禁忌清单逐条检查——**还没做**，见下方"给接手的人"
 
 ## 10. 材质定稿（2026-09-22，取代第 3/4 节里过时的"纯 CSS 装饰"描述）
 
 **核心教训**：第一版原型被站长否决为"崭新的旧"，根源是想用 CSS 渐变/阴影去"描述"旧感，
 而不是像 `tools/build-leather.js` 那样用噪声算法真的算出高度图再渲染光影。这版材质全部走后者路线。
+
+> **2026-09-23 更新**：内页材质生成脚本已移进仓库 `tools/build-notebook-textures.js`
+> （对应本节末尾之前的遗留 TODO），算法原样复制自 `experiments/notebook-spread/gen-page-textures.js`，
+> 没有改数值。`npm run notebook:textures` 会生成 `public/img/notebook/page-P0-clean-v1.webp` ~
+> `page-P4-handling-patina-v1.webp` 五张图并提交进仓库（和 `leather-*-v1.webp` 同一套约定：
+> 静态资源缓存 7 天，改配方要换版本号）。
 
 **封面（牛皮革，对应实验脚本 `A-antique-leather-cover`）**：
 - 细密不规则的皮孔+细纹粒面（Worley 噪声，cell 尺寸调小、crease/domeBias 调低，避免"鳄鱼皮/蛇皮"的规整大颗粒）
@@ -161,7 +183,46 @@ blog.blue 学着做。标题/批注允许用比连笔签名更活泼的艺术字
   - `P4-handling-patina`：手汗常摸的那个角比整体边角磨损更暗一块
   - 渍痕类的坑：最早用同心圆多层调制做狐斑/渍痕，被站长指出像"真菌感染的同心圆靶心"，
     后改成随机谐波扭曲半径 + 随机偏心，不再是数学意义上的正圆
-- 实验脚本目前在 `/home/claude/experiments/`（`aged-textures.js` 封面 + `page-variants.js` 内页 5 变体），
-  **还没有移进仓库 `tools/` 目录、也没接入正式渲染流程**，下一步要做这件事
+- ~~实验脚本目前在 `/home/claude/experiments/`……还没有移进仓库 `tools/` 目录~~
+  **已于 2026-09-23 移进 `tools/build-notebook-textures.js`，见上方更新说明。**
 
+## 11. 步骤6/7接入首页 + 给接手的人（2026-09-23）
+
+这一轮把此前一直停留在 `/dev/notebook/*` 独立原型里的步骤4/5成果，**正式接入了真实首页**
+（`views/index.ejs` 的 `#notebook-book` + `public/js/notebook.js`），并补上了步骤6（标签/搜索
+便签）和步骤7（真实图片装饰）：
+
+- `src/models/tag.js` 新增 `listAllPublic`（只统计已发布文章、过滤空标签，公开标签云用）。
+- `src/models/post.js` 新增 `searchPublished`（标题/摘要 `ILIKE` 子串匹配，`limit` 固定给小上限）。
+- `src/routes/public.js`：首页路由（`/`）现在真的会算 `notebookEnabled`/`notebook`（品牌签名 SVG）
+  传给模板；新增 `GET /api/notebook/tags`、`GET /api/notebook/search`。
+- `src/utils/notebook.js`（确定性 hash 分配，之前已写好，这轮正式接入路由）。
+- `views/partials/notebook.ejs` + `public/css/notebook.css` + `public/js/notebook.js`：完整的
+  翻书 UI（封面/书脊分册标签/目录翻页/点击进入全文/标签搜索便签），逻辑上承接了
+  `experiments/notebook-spread/` 里几轮原型验证过的所有交互（分册切换、慢速物理翻页、快速
+  哗啦啦进入/返回、阅读量静默计数），不是重新写的。
+
+**已用真实 Postgres + curl 验证过**（不是只读代码）：`notebookEnabled` 只在首页第1页为真、
+分页和标签页不受影响；`/api/notebook/*` 六个接口（含新增的 tags/search）返回结构和 400/404
+边界都对；`view_count` 真的会 +1；`/dev/notebook/*` 未登录返回 302；静态资源
+（`/css/notebook.css`、`/js/notebook.js`、`/img/notebook/*.webp`）都能正常拿到；`/feed.xml`、
+`/sitemap`、`/sitemap.xml`、`/p/:slug`、`/robots.txt`、404 页面全部回归测过没有被这轮改动带坏。
+
+**给接手的人，还差什么**：
+
+1. **步骤6的便签样式池不完整**：第5节要求"方形便签、卡片式索引卡、书签丝带、回形针夹的小纸条"
+   四种随机分配，这轮只做了索引卡（标签）+ 回形针纸条（搜索）两种固定搭配，没有做"方形便签"
+   "书签丝带"两种，也没做随机分配逻辑——因为只有两个便签（标签/搜索），"随机从池子里选"这件事
+   本身意义不大，暂时按"标签配索引卡、搜索配回形针纸条"写死了。如果站长要求做出视觉差异化，
+   这里要重新设计。
+2. **没有任何一版视觉截图**：这轮沙箱依然装不了 Playwright 的 headless Chromium（历次记录里
+   反复出现的同一个环境限制），所有验证都停留在"接口数据对、DOM 结构对"，翻书本体的实际观感
+   （磨损、痕迹材质的可辨识度、胶带/拍立得/大头针装饰的可信度、标签便签"掀开一角"动效）
+   **一次都没有被看过**，站长部署后务必打开首页实际看一遍，包括缩小窗口到 640px 以下确认
+   移动端确实是原来的卡片列表。
+3. **步骤9（整体走查，对照第2节禁忌清单）完全没做**：没有逐条对照"不要 hover 特效""磨损要
+   不均匀""不要混进无关复古元素"这三条禁忌重新走查一遍代码和视觉，这是下一轮必须做的收尾。
+4. **`docs/HANDOFF.md`** 已加了对应小节（v7），但**没有像 v3/v4 那样做端到端的 Playwright
+   测试**，只做到"真实数据库 + curl 验证接口和渲染结构"这一层，比 v3/v4 的验证深度浅，
+   接手者不要以为这轮和 v3/v4 同等严谨。
 

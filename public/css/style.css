@@ -178,6 +178,7 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
   margin: 0 0 0.4rem;
 }
 .page-heading p { color: var(--line-white-dim); margin: 0; font-size: 0.95rem; }
+.empty-hint { color: var(--line-white-dim); }
 
 /* ---------- 文章卡片（列表页） ---------- */
 
