@@ -33,7 +33,7 @@ main.has-notebook { max-width: 780px; }
 
 /* ---------- 左页：封面（线上贴图 + 真实品牌签名，复用 experiments/notebook-cover 定稿方案） ---------- */
 .nb-cover {
-  position: relative; width: 260px; flex: none;
+  position: relative; width: 340px; flex: none;
   background-color: var(--paper);
   background-image: var(--leather-calf);
   background-size: cover; background-position: 40% 30%;
@@ -101,10 +101,21 @@ main.has-notebook { max-width: 780px; }
 /* ---------- 右页：目录 ---------- */
 .nb-toc-page {
   position: relative; width: 340px; min-height: 408px; flex: none;
-  background-size: cover; border-radius: 0 4px 4px 0;
+  border-radius: 0 4px 4px 0;
   padding: 1.5rem 1.4rem 3.4rem; color: var(--ink-on-paper);
   transform-origin: left center; backface-visibility: hidden;
   overflow: visible;
+  /* 纸张改成统一的米黄色淡线条纸——原来按文章 hash 分配茶渍/水渍/晒痕/包浆四种
+     "做旧"贴图，各页颜色深浅、脏污程度都不一样，跟左侧干净的封面放在一起，
+     两边材质、色调都不统一，看起来像两个不相关的东西拼在一起，而不是同一本书。
+     现在统一用站点本来就在用的米黄纸色（--paper，和文章卡片同一个颜色），
+     只加淡淡的横向线条做"笔记本感"，不再有任何"旧痕"。 */
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 27px,
+    rgba(120, 94, 50, 0.15) 27px, rgba(120, 94, 50, 0.15) 28px
+  );
+  background-position: 0 6px;
   /* 左边缘往装订缝方向压暗，跟 .nb-cover 右边缘、.nb-gutter 的中心暗带接成
      一条连续的折痕——三段拼起来才是"一本书从中间摊开"，不是三块各自打光的面板。 */
   box-shadow: inset 16px 0 18px -14px rgba(2, 8, 18, 0.42);
@@ -263,8 +274,16 @@ main.has-notebook { max-width: 780px; }
 }
 .nb-stage.active { display: flex; }
 .nb-flying-page {
-  position: absolute; width: 300px; height: 420px; border-radius: 2px; background-size: cover;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.5); transform-origin: left center; opacity: 0;
+  position: absolute; width: 300px; height: 420px; border-radius: 2px; opacity: 0;
+  transform-origin: left center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  /* 跟 .nb-toc-page 用同一套统一米黄线条纸，翻页动效途中不会再闪过深浅不一的
+     "做旧"贴图——纸张材质从头到尾都是同一种。 */
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 27px,
+    rgba(120, 94, 50, 0.15) 27px, rgba(120, 94, 50, 0.15) 28px
+  );
 }
 .nb-dest {
   position: relative; width: 480px; max-width: 92vw; max-height: 82vh; overflow-y: auto;

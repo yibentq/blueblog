@@ -64,7 +64,9 @@
       state.totalPages = data.totalPages;
       volLabelEl.textContent = data.year + ' · ' + (QUARTER_LABEL[data.quarter] || data.quarter);
       pageNoEl.textContent = '— ' + data.page + ' / ' + data.totalPages + ' —';
-      tocPageEl.style.backgroundImage = "url('/img/notebook/page-" + data.pageTexture + "-v1.webp')";
+      // 纸张统一改成 CSS 定义的米黄线条纸（见 notebook.css .nb-toc-page），不再按
+      // data.pageTexture 切成"做旧"贴图——接口仍然返回这个字段，先不动后端，只是
+      // 前端不再消费它，避免旧痕材质和封面色调不统一的问题。
 
       entriesEl.innerHTML = '';
       if (!data.entries.length) {
@@ -206,9 +208,9 @@
       var pages = getFlyingPages();
       var perPage = TOTAL / pages.length;
       var order = direction === 1 ? pages : pages.slice().reverse();
-      var textures = ['P0-clean', 'P2-water-mark', 'P1-tea-ring', 'P4-handling-patina'];
+      // 纸张统一了（见 notebook.css .nb-flying-page），翻页途中不再切换四种做旧
+      // 贴图，去掉了原来给每张飞页挨个指定 backgroundImage 的那行。
       order.forEach(function (p, i) {
-        p.style.backgroundImage = "url('/img/notebook/page-" + textures[i] + "-v1.webp')";
         var delay = i * (perPage * 0.55);
         var idx = pages.indexOf(p);
         var fromT = direction === 1
