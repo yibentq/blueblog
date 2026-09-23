@@ -36,13 +36,12 @@ const pageUri = dataUri(path.join(__dirname, 'P1-tea-ring.png'), 'image/png');
 const sigDark = buildSignature({ width: 210, ink: '#16233A' }).svg;
 const sigLight = buildSignature({ width: 210, ink: '#FBF6E8', opacity: 0.5 }).svg;
 
-// 4 条目录条目占位数据（非真实文章，仅供排版验证；日期用手写批注式样式呈现）
-const ENTRIES = [
-  { title: '给博客换了个封面', date: '9.14', excerpt: '折腾了一下午贴图和阴影，总算不那么像 PPT 了。', hasImage: true, tape: -6 },
-  { title: '一次失败的部署', date: '9.09', excerpt: 'Nginx 配置抄错了一行，凌晨两点在骂自己。', hasImage: false },
-  { title: '路过的一只猫', date: '9.03', excerpt: '楼下便利店门口，好像认识我了。', hasImage: true, tape: 4 },
-  { title: '关于慢下来这件事', date: '8.27', excerpt: '这周没写代码，读了两本闲书。', hasImage: false },
-];
+// 2026-09-23 补充（步骤4前端对接，第二片，续 spine-tabs 那一片）：
+// 原来这里写死 4 条占位目录，现在改成运行时 fetch 真实数据（最新一个分册的第1页），
+// 跟 build-spine-tabs-prototype.js 那次的处理方式一致：不能再直接双击本地文件打开，
+// 要跑 `npm run dev` 后访问 http://localhost:3000/dev/notebook/spread-prototype.html。
+// 这个原型本身没有书脊标签、不切换分册，所以只需要"拿最新一册第1页"这一次 fetch，
+// 比 spine-tabs 那版简单——分册切换的交互留在 spine-tabs 那个原型里，这里不重复做。
 
 const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -75,6 +74,7 @@ body{
 }
 .note{ max-width:760px; color:var(--line-white-dim); font-size:0.8rem; text-align:center; margin-bottom:1.6rem; line-height:1.6; }
 .note b{ color:#E7D9B8; }
+.note.err{ color:#E8A0A0; }
 
 .spread{ position:relative; display:flex; box-shadow: 0 24px 50px rgba(2,8,18,0.5); border-radius:4px; overflow:visible; }
 
@@ -128,7 +128,8 @@ body{
 .toc-header .vol{ font-family:'Caveat',cursive; font-size:1.3rem; color:#5B3A1E; transform:rotate(-2deg); display:inline-block; }
 .toc-header .page-no{ font-size:0.68rem; color:#6b5a42; opacity:0.75; }
 
-.entries{ display:flex; flex-direction:column; gap:0.85rem; }
+.entries{ display:flex; flex-direction:column; gap:0.85rem; min-height:220px; }
+.entries .placeholder{ font-family:'Source Serif 4',serif; font-size:0.85rem; color:#6b5a42; opacity:0.8; }
 .entry{ position:relative; padding-left:0.1em; }
 .entry:nth-child(2){ margin-left:14px; }
 .entry:nth-child(3){ margin-left:-6px; }
@@ -160,9 +161,10 @@ body{
 </style>
 </head>
 <body>
-  <p class="note">
-    <b>步骤3 · 跨页静态原型</b> —— 只验证封面新用色 + 内页旧材质放在一起协不协调，<b>不是最终排版</b>。
-    右页缩略图为占位色块（步骤7再接真实图片装饰系统），标题手写字体（Caveat）为临时占位（未与站长确认，字体本身待定）。
+  <p class="note" id="note">
+    <b>步骤3 · 跨页静态原型（步骤4前端对接版）</b> —— 只验证封面新用色 + 内页旧材质放在一起协不协调，<b>不是最终排版</b>。
+    右页目录已换成 <code>fetch('/api/notebook/toc?...')</code> 读到的最新一册第1页真实数据（缩略图仍是占位色块，
+    步骤7再接真实图片装饰系统；标题手写字体 Caveat 仍是临时占位，未与站长确认，字体本身待定）。
   </p>
   <div class="spread">
     <div class="cover-page">
@@ -176,20 +178,72 @@ body{
     <div class="gutter"></div>
     <div class="toc-page">
       <div class="toc-header">
-        <span class="vol">2026 · 秋</span>
-        <span class="page-no">— 14 —</span>
+        <span class="vol" id="volLabel">—</span>
+        <span class="page-no" id="pageNo">—</span>
       </div>
-      <div class="entries">
-        ${ENTRIES.map((e) => `
-        <div class="entry" data-has-image="${!!e.hasImage}">
-          ${e.hasImage ? '<div class="thumb"></div>' : ''}
-          <span class="title">${e.title}</span><span class="date">${e.date}</span>
-          <span class="excerpt">${e.excerpt}</span>
-        </div>`).join('')}
+      <div class="entries" id="entries">
+        <span class="placeholder">加载中…</span>
       </div>
     </div>
   </div>
-  <p class="caption">跨页原型 · 左页封面（复用线上贴图）+ 右页目录（P1 茶渍内页材质）</p>
+  <p class="caption">跨页原型 · 左页封面（复用线上贴图）+ 右页目录（P1 茶渍内页材质 + 真实文章数据）</p>
+
+<script>
+(function () {
+  var QUARTER_LABEL = { 1: '春', 2: '夏', 3: '秋', 4: '冬' };
+  var entriesEl = document.getElementById('entries');
+  var volLabelEl = document.getElementById('volLabel');
+  var pageNoEl = document.getElementById('pageNo');
+  var noteEl = document.getElementById('note');
+
+  function showFetchError(msg) {
+    noteEl.classList.add('err');
+    noteEl.innerHTML = '<b>加载真实数据失败：</b>' + msg +
+      '。这个原型现在依赖同源的 /api/notebook/* 接口，需要先 <code>npm run dev</code> 跑起来，' +
+      '再打开 <code>http://localhost:3000/dev/notebook/spread-prototype.html</code>' +
+      '（双击本地文件直接打开会因为跨源被拦掉，不是接口坏了）。';
+  }
+
+  function renderEntries(data) {
+    volLabelEl.textContent = data.year + ' \u00b7 ' + (QUARTER_LABEL[data.quarter] || data.quarter);
+    pageNoEl.textContent = '\u2014 ' + data.page + ' / ' + data.totalPages + ' \u2014';
+    entriesEl.innerHTML = '';
+    if (!data.entries.length) {
+      entriesEl.innerHTML = '<span class="placeholder">这个分册还没有文章。</span>';
+      return;
+    }
+    data.entries.forEach(function (e) {
+      var d = new Date(e.date);
+      var dateStr = (d.getMonth() + 1) + '.' + d.getDate();
+      var div = document.createElement('div');
+      div.className = 'entry';
+      div.setAttribute('data-has-image', e.hasImage ? 'true' : 'false');
+      div.innerHTML =
+        (e.hasImage ? '<div class="thumb"></div>' : '') +
+        '<span class="title"></span><span class="date"></span>' +
+        '<span class="excerpt"></span>';
+      div.querySelector('.title').textContent = e.title;
+      div.querySelector('.date').textContent = dateStr;
+      div.querySelector('.excerpt').textContent = e.excerpt || '';
+      entriesEl.appendChild(div);
+    });
+  }
+
+  fetch('/api/notebook/volumes')
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (data) {
+      if (!data.volumes.length) {
+        entriesEl.innerHTML = '<span class="placeholder">还没有已发布的文章分册。</span>';
+        return;
+      }
+      var v = data.volumes[0]; // 最新一册
+      return fetch('/api/notebook/toc?year=' + v.year + '&quarter=' + v.quarter + '&page=1')
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(renderEntries);
+    })
+    .catch(function (err) { showFetchError(err.message); });
+})();
+</script>
 </body>
 </html>
 `;

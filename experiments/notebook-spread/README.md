@@ -100,6 +100,21 @@
   （Playwright 的 Chromium 下载源不在允许访问的域名列表里），只验证了接口数据
   和 DOM 结构是对的，没能像 v3/v4 那样截图看实际观感，这条请站长本地打开后确认。
 
+## 步骤4前端对接补充（2026-09-23，第三轮）——第二片：跨页原型
+
+`build-spread-prototype.js` 也接上了真实数据，处理方式和上一轮 spine-tabs 一致：
+- 右页目录不再写死 4 条占位，改成 `fetch('/api/notebook/volumes')` 拿最新一册，
+  再 `fetch('/api/notebook/toc?...')` 取它的第1页真实文章，渲染进 `.entries`。
+- 这个原型本身没有书脊标签、不用切换分册，所以比 spine-tabs 那版简单——只做了
+  "拿最新一册第1页"这一次 fetch，分册切换的交互留在 spine-tabs 原型里，没有重复做。
+- 同样只能通过 `http://localhost:3000/dev/notebook/spread-prototype.html` 同源访问，
+  双击本地文件会因为跨源被拦掉。已用本地临时 Postgres 验证过能正常拿到数据渲染。
+- 缩略图仍是占位色块（步骤7）、标题字体仍是未确认的 Caveat 占位，这两点这一轮没动。
+
+至此 `spine-tabs-prototype.html` 和 `spread-prototype.html` 都接了真实数据；
+`flip-transition-prototype.html` 里的 `setTimeout(fakeLatency)` 还没换成真实的
+`fetch(slug)`，是接下来这一片没做完的部分，按约定留到下一轮单独做。
+
 ## 站长看过跨页原型后的反馈
 
 没有给具体修改意见，直接让继续推进（跳到步骤5），按"协调、可以接受"处理，
@@ -121,8 +136,8 @@
 
 - 步骤3：多痕迹页对比、书脊分册标签**已出原型**（见上），但**都未经站长确认**，
   不算完成；标签的点击交互仍未接
-- 步骤4：目录翻页交互接真实文章数据——**书脊分册标签这一片已接**（见上"步骤4前端
-  对接补充"），`spread-prototype.html`/`flip-transition-prototype.html` 仍是假数据
+- 步骤4：目录翻页交互接真实文章数据——**书脊分册标签、跨页原型这两片已接**（见上
+  两节"步骤4前端对接补充"），`flip-transition-prototype.html` 仍是假数据/假延迟
 - 步骤6：目录页之间的慢速物理翻页（跟步骤5的快速哗啦啦是两种不同动效，别混）
 - 步骤7：真实图片装饰系统（胶带/拍立得/大头针），当前用占位色块代替
 - 步骤8/9：移动端隔离确认、SEO/无 JS 兜底验证、禁忌清单逐条走查
