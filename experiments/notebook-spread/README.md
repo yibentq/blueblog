@@ -185,6 +185,44 @@ Chromium**，没能实际点一下"返回"按钮看反向动效的真实观感�
 如果返回动效的方向感、时长和进入不对称观感不对，需要调的话在
 `runFlying(direction, onDone)` 这一个函数里改就行，进入/返回共用同一套参数。
 
+## 预览方式改动（2026-09-23，第五轮）——`/dev/notebook/*` 从"仅开发环境"改成"登录可见"
+
+站长部署上线后按提示 `git pull` 完发现首页没变化——这是预期内的（这几轮动效
+只在 `/dev/notebook/*` 原型页里，没碰首页），但站长要在**生产环境**看这批原型时，
+发现 `/dev/notebook/*` 原来是 `NODE_ENV !== 'production'` 才挂载的，生产环境是
+404，每次预览都得临时把 `.env` 里的 `NODE_ENV` 改成 `development` 再改回去，
+麻烦且有风险（切换期间生产专用的限流/安全 cookie 也会跟着松开）。
+
+**改法**（`src/routes/public.js`）：这条路由不再判断 `NODE_ENV`，改成套
+`requireAuth`（和 `/admin/*` 其他路由一样的登录校验中间件）——登录管理员账号
+就能在生产环境直接访问 `/dev/notebook/flip-transition-prototype.html` 等页面，
+未登录会跳转到 `/admin/login`。三个只读接口 `/api/notebook/*` 不受影响，
+仍然公开（本来就是只读展示数据，和 `/feed.xml` 一个安全等级）。
+
+**已知的小别扭**：登录后会跳回 `/admin` 首页，不会自动回到刚才想看的那个原型
+页面（`requireAuth` 现有实现没做 `returnTo`），得手动再输一次
+`/dev/notebook/...` 的地址——这是复用现成中间件的代价，没有为这一个场景单独
+加 `returnTo` 逻辑，如果站长觉得麻烦可以再提。
+
+**验证方式**：这一轮在沙箱里装了一次性本地 Postgres，跑了真实 `src/app.js`，
+分别用 `NODE_ENV=production` 和 `NODE_ENV=development` 两种模式各验证了一遍：
+- production 模式：不带登录 session 直接访问
+  `/dev/notebook/flip-transition-prototype.html` 返回 302 跳 `/admin/login`，
+  `/api/notebook/volumes` 仍返回 200。**没能测通 production 模式下带登录态的
+  完整流程**——生产环境 session/CSRF cookie 都带 `Secure` 属性（CSRF cookie还是
+  `__Host-` 前缀），必须走 HTTPS，沙箱里只有 HTTP，登录后 `Set-Cookie` 虽然
+  下发了，但 `Secure` cookie 不会在后续 HTTP 请求里带回去，所以这条路径的
+  "登录后能不能看到"这一步只在 development 模式下测通，不是 production 模式
+  没做校验、而是沙箱的 HTTP 限制测不出来。
+- development 模式（cookie 不带 `Secure`）：走了一遍真实的 `curl` 登录
+  （拿 `_csrf` 隐藏字段 → 连同 `__Host-csrf` cookie 一起 POST `/admin/login`
+  → 拿到 `blog_blue_sid` session cookie），带着登录 cookie 访问
+  `flip-transition-prototype.html` 和 `spread-prototype.html` 都返回 200，
+  不带登录 cookie 仍是 302——确认了"未登录挡住、登录放行、只读接口不受影响"
+  这三点都对；`requireAuth` 是复用 `/admin/*` 现成、已经在生产跑着的中间件，
+  不是新写的校验逻辑，风险可控。**站长部署后请实际登录一次 `/admin`，
+  再访问 `/dev/notebook/flip-transition-prototype.html` 确认能在生产环境看到。**
+
 ## 步骤5动效目前的坑 / 下一步
 
 - 还没问过站长这版动效的手感——时长、翻页轨迹、内容淡入方式、返回动效的

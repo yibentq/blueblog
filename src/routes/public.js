@@ -5,6 +5,7 @@ const postModel = require('../models/post');
 const tagModel = require('../models/tag');
 const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
+const { requireAuth } = require('../middleware/auth');
 
 function siteUrl() {
   return (process.env.SITE_URL || '').replace(/\/$/, '');
@@ -174,16 +175,23 @@ router.post('/api/notebook/article/:slug/view', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ---- 仅开发环境：把 experiments/notebook-spread/ 里的原型 HTML 用同源方式提供出来 ----
-// 目的：这些原型现在会用 fetch() 打上面那三个只读接口，file:// 直接双击打开会因为
-// 跨源被浏览器拦掉；挂在这里之后本地跑 `npm run dev`，浏览器打开
-// http://localhost:3000/dev/notebook/<文件名>.html 就是同源，fetch 能正常工作。
-// 生产环境完全不挂这段路由（连 require('path') 都不执行），不会暴露实验目录。
-if (process.env.NODE_ENV !== 'production') {
+// ---- 实验原型预览：experiments/notebook-spread/ 用同源方式提供出来，登录管理员可见 ----
+// 目的：这些原型会用 fetch() 打上面几个只读接口，file:// 直接双击打开会因为跨源被
+// 浏览器拦掉，需要同源访问才能 fetch 成功。
+//
+// 2026-09-23 改动：原来是 NODE_ENV !== 'production' 才挂这段路由，导致站长在生产
+// 环境（NODE_ENV=production）里完全看不到，每次预览都要临时切环境变量再切回去，
+// 麻烦且有风险（切换期间生产专用的限流/安全 cookie 会跟着松开）。现在改成挂载
+// 路由本身不分环境，但过 requireAuth——只有登录管理员账号的人能访问，未登录访问
+// 会跳转到 /admin/login（和 /admin/* 其他路由的保护方式一致，不是新引入的模式）。
+// 只读接口 /api/notebook/* 仍然公开（本来就是给这层原型用的展示数据，和 /feed.xml
+// 一个安全等级，不受这次改动影响）。
+// 注意：登录后会跳回 /admin 首页，不会自动回到刚才那个原型页面——这是 requireAuth
+// 现有的行为（没有做 returnTo），需要手动再输一次 /dev/notebook/... 的地址。
+router.use('/dev/notebook', requireAuth, (() => {
   const path = require('path');
-  const express2 = require('express');
-  router.use('/dev/notebook', express2.static(path.join(__dirname, '..', '..', 'experiments', 'notebook-spread')));
-}
+  return express.static(path.join(__dirname, '..', '..', 'experiments', 'notebook-spread'));
+})());
 
 // RSS 订阅
 router.get('/feed.xml', async (req, res, next) => {

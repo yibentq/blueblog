@@ -86,9 +86,10 @@ function showFetchError(msg) {
   var noteEl = document.getElementById('note');
   noteEl.classList.add('err');
   noteEl.innerHTML = '<b>加载真实数据失败：</b>' + msg +
-    '。这个原型现在依赖同源的 /api/notebook/* 接口，需要先 <code>npm run dev</code> 跑起来，' +
-    '再打开 <code>http://localhost:3000/dev/notebook/flip-transition-prototype.html</code>' +
-    '（双击本地文件直接打开会因为跨源被拦掉，不是接口坏了）。';
+    '。这个原型依赖同源的 /api/notebook/* 接口和 /dev/notebook/* 静态路由——' +
+    '本地开发跑 <code>npm run dev</code> 后打开 <code>http://localhost:3000/dev/notebook/flip-transition-prototype.html</code> 即可；' +
+    '生产环境需要先登录 /admin 管理员账号（这条路由现在按登录状态放行，不再区分环境），' +
+    '双击本地文件直接打开会因为跨源被拦掉，都不是接口坏了。';
 }
 
 function loadEntries() {

@@ -2,6 +2,13 @@
 
 // 生成 flip-transition-prototype.html：点击目录条目 → 全文页的翻页动效原型（步骤5）。
 //
+// 2026-09-23 补充（预览路由改用登录校验，不再按 NODE_ENV 区分）：
+// /dev/notebook/* 这条静态路由原来只在 NODE_ENV !== 'production' 时挂载，导致站长
+// 在生产环境完全看不到这批原型，每次预览都要临时切 NODE_ENV 再切回去。改成
+// src/routes/public.js 里对这条路由套 requireAuth（和 /admin/* 一样的登录校验），
+// 不再区分环境——登录管理员账号就能在生产环境直接看，未登录会跳到 /admin/login。
+// 这里改的只是错误提示文案，实际路由改动在 src/routes/public.js。
+//
 // 2026-09-23 补充（步骤5补充项：返回目录 + 阅读量静默计数）：
 // 上一轮 README 里记的两个"还没做"，这一轮做了：
 // - 全文页加了"← 返回目录"按钮，点击播放一次反向动效（同一批 flying-page 元素，
@@ -137,9 +144,10 @@ function showFetchError(msg) {
   var noteEl = document.getElementById('note');
   noteEl.classList.add('err');
   noteEl.innerHTML = '<b>加载真实数据失败：</b>' + msg +
-    '。这个原型现在依赖同源的 /api/notebook/* 接口，需要先 <code>npm run dev</code> 跑起来，' +
-    '再打开 <code>http://localhost:3000/dev/notebook/flip-transition-prototype.html</code>' +
-    '（双击本地文件直接打开会因为跨源被拦掉，不是接口坏了）。';
+    '。这个原型依赖同源的 /api/notebook/* 接口和 /dev/notebook/* 静态路由——' +
+    '本地开发跑 <code>npm run dev</code> 后打开 <code>http://localhost:3000/dev/notebook/flip-transition-prototype.html</code> 即可；' +
+    '生产环境需要先登录 /admin 管理员账号（这条路由现在按登录状态放行，不再区分环境），' +
+    '双击本地文件直接打开会因为跨源被拦掉，都不是接口坏了。';
 }
 
 function loadEntries() {
