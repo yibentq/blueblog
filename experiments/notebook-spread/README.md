@@ -112,8 +112,9 @@
 - 缩略图仍是占位色块（步骤7）、标题字体仍是未确认的 Caveat 占位，这两点这一轮没动。
 
 至此 `spine-tabs-prototype.html` 和 `spread-prototype.html` 都接了真实数据；
-`flip-transition-prototype.html` 里的 `setTimeout(fakeLatency)` 还没换成真实的
-`fetch(slug)`，是接下来这一片没做完的部分，按约定留到下一轮单独做。
+`flip-transition-prototype.html` 里的 `setTimeout(fakeLatency)` 换成真实的
+`fetch(slug)` 这一片，见下方"步骤4前端对接补充（第三轮）——第三片"，已在
+下一轮单独做完。
 
 ## 站长看过跨页原型后的反馈
 
@@ -121,23 +122,57 @@
 但**没有逐项确认**（缩略图占位色块、Caveat 字体、目录条目错位幅度、装订缝处理
 都还是未锁定状态，不代表定稿）。
 
+## 步骤4前端对接补充（2026-09-23，第三轮）——第三片：翻页动效收尾
+
+`flip-transition-prototype.html` 也接上了真实数据，是这一轮"跳过流程"里最后
+一块假数据：
+
+- 目录条目不再写死3条假标题，改成和 `spread-prototype.html` 同一个来源——先
+  `fetch('/api/notebook/volumes')` 拿最新一册，再 `fetch('/api/notebook/toc?...')`
+  取第1页真实文章，每条目录记住自己的 `slug`。
+- 点击后原来的假延迟 Promise（`setTimeout(fakeLatency)`）换成真正的
+  `fetch('/api/notebook/article/:slug')`，动效本身（错开时间、旋转轨迹、总时长
+  0.7s）完全没动——只换了触发信号源，符合当时立的计划。
+- 全文页内容是真实标题 + `content_html`；服务端 `/api/notebook/article/:slug`
+  给的就是保存时净化过的字段，和 `/p/:slug` 走同一份 `sanitize-html` 管线，这里
+  直接 `innerHTML` 不是新开的风险面（已核对 `src/routes/public.js` 对应路由的
+  实现，不是凭记忆假设）。
+- 加了取数失败时的降级提示（顶部提示条变红，说明依赖 `/api/notebook/*`、
+  必须走 `npm run dev` + `/dev/notebook/...` 同源访问，不能双击本地文件打开）。
+- 阅读量静默计数那个小 TODO 仍然没做（原作者标注过"这里先不做"），这一轮没有
+  顺带加，不属于"重新接线"的范围。
+
+**验证方式**：这一轮沙箱里装了一次性本地 Postgres（能装，跟之前"下不了
+Playwright Chromium"是两回事，之前几轮记录的坑不代表这次也不能装库），跑了
+`npm run migrate && npm run seed`，起了真实的 `src/app.js`，用 `curl` 真实打了
+四个请求验证：`/api/notebook/volumes`、`/api/notebook/toc?...`、
+`/api/notebook/article/<真实slug>`（确认返回里含真实标题和正文 HTML）、
+`/api/notebook/article/<不存在的slug>`（确认返回 404）、以及
+`/dev/notebook/flip-transition-prototype.html`（确认同源静态路由能访问到）。
+**沙箱依旧下不了 Playwright 的 Chromium**（下载源不在允许域名列表），所以
+**没能像 v3/v4 那样截图看点击后的真实动效观感**——只验证了接口数据和后端
+渲染逻辑是对的，翻页动效本身的手感、内容淡入的实际效果，请站长本地打开
+`http://localhost:3000/dev/notebook/flip-transition-prototype.html` 点一下确认。
+
+至此 `spine-tabs-prototype.html`、`spread-prototype.html`、
+`flip-transition-prototype.html` 三个原型全部接上了真实数据，步骤4前端对接
+这一片可以算完成；**动效手感本身（时长、翻页轨迹、内容淡入方式）站长还没给
+过具体反馈**，不代表定稿。
+
 ## 步骤5动效目前的坑 / 下一步
 
-- **这段动效是假数据触发的**，用 `setTimeout` 模拟异步延迟。步骤4把真实文章
-  数据和路由接上之后，这里要重新接线：把 `setTimeout(fakeLatency)` 换成真实的
-  `fetch(slug)` 完成时机，动效本身（错开时间、旋转轨迹、总时长）不用大改，
-  只是触发信号源要换。
-- 还没问过站长这版动效的手感——时长、翻页轨迹、内容淡入方式都可能要调，
-  站长看过后暂未给出具体反馈就要求先提交上传，**不代表定稿**。
+- 还没问过站长这版动效的手感——时长、翻页轨迹、内容淡入方式都可能要调。
 - 只做了"点击进入"这一个方向，没做"返回目录"的对应动效（如果需要对称的
   反向动效，是步骤5的补充项，还没排期）。
+- 阅读量静默计数（内容换上去之后该不该补一次 `/p/:slug` 的轻量计数）还没做，
+  见上面这轮记录，需要的话单独排期，不要顺手混进别的改动里。
 
 ## 仍然跳过、没做的部分（对照 `docs/BOOK_DESIGN.md` 步骤清单）
 
 - 步骤3：多痕迹页对比、书脊分册标签**已出原型**（见上），但**都未经站长确认**，
   不算完成；标签的点击交互仍未接
-- 步骤4：目录翻页交互接真实文章数据——**书脊分册标签、跨页原型这两片已接**（见上
-  两节"步骤4前端对接补充"），`flip-transition-prototype.html` 仍是假数据/假延迟
+- 步骤4：目录翻页交互接真实文章数据——**三片（书脊分册标签、跨页原型、翻页动效）
+  均已接**（见上面三节"步骤4前端对接补充"），前端对接这一片可以算完成
 - 步骤6：目录页之间的慢速物理翻页（跟步骤5的快速哗啦啦是两种不同动效，别混）
 - 步骤7：真实图片装饰系统（胶带/拍立得/大头针），当前用占位色块代替
 - 步骤8/9：移动端隔离确认、SEO/无 JS 兜底验证、禁忌清单逐条走查
