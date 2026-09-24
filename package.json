@@ -13,6 +13,7 @@
     "stitch": "node tools/build-stitch.js",
     "foil": "node tools/build-foil.js",
     "grid": "node tools/build-grid.js",
+    "ink": "node tools/build-ink.js",
     "notebook:textures": "node tools/build-notebook-textures.js"
   },
   "engines": {
