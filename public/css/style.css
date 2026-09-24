@@ -85,18 +85,14 @@ body {
   font-size: 17px;
   line-height: 1.7;
   background-image:
-    /* 交点针孔 */
-    radial-gradient(circle at 50% 50%, rgba(2, 9, 20, 0.85) 0 1px, rgba(150, 190, 240, 0.28) 1.4px, rgba(150, 190, 240, 0) 2.6px),
-    /* 主线（每 140px）：竖 / 横 */
-    linear-gradient(90deg, rgba(2, 9, 20, 0.5) 0 1px, rgba(150, 190, 240, 0.15) 1px 2px, transparent 2px),
-    linear-gradient(180deg, rgba(2, 9, 20, 0.5) 0 1px, rgba(150, 190, 240, 0.15) 1px 2px, transparent 2px),
-    /* 辅线（每 28px）：竖 / 横 */
-    linear-gradient(90deg, rgba(2, 9, 20, 0.3) 0 1px, rgba(150, 190, 240, 0.09) 1px 2px, transparent 2px),
-    linear-gradient(180deg, rgba(2, 9, 20, 0.3) 0 1px, rgba(150, 190, 240, 0.09) 1px 2px, transparent 2px),
+    /* 压印线格：tools/build-grid.js 生成的 560px 无缝瓦片（20 条辅线 = 4 个主线间距），
+       线和针孔是同一根尺子压出来的——线的弯曲互相关联、针孔落在线的真实交点上，
+       不是 CSS 渐变画的数学格子。见该脚本头部注释。 */
+    url('/img/grid-navy-v1.webp'),
     /* 皮革粒面 */
     var(--leather-navy);
-  background-size: 28px 28px, 140px 140px, 140px 140px, 28px 28px, 28px 28px, 384px 384px;
-  background-position: -14px -14px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 560px 560px, 384px 384px;
+  background-position: 0 0, 0 0;
 }
 /* 暗角 + 顶部一束光：固定在视口上，不随滚动，z-index:-1 保证在内容之下 */
 body::before {
@@ -582,7 +578,7 @@ footer a { color: var(--line-white-dim); }
   }
   .post-article { --rim: 20px; }  /* 手机上卡片内边距只有 24px，粗粒边不能比它宽，否则会蹭到正文 */
   .post-card { --rim: 18px; }
-  body { background-size: 28px 28px, 140px 140px, 140px 140px, 28px 28px, 28px 28px, 320px 320px; }
+  body { background-size: 560px 560px, 320px 320px; }
   .sitemap-no { width: 3.2rem; }
   .sitemap-list li { flex-wrap: wrap; }
 }
