@@ -48,6 +48,17 @@ marked.use({
       if (level === 2 || level === 3) return `<h${level} id="${headingId(raw)}">${text}</h${level}>\n`;
       return false; // 其余走默认渲染
     },
+    // 单独成段的图片 → 相册里的一张照片：四角压相角、下方编号 FIG. 01（标题可选）。
+    // 说明文字只取 Markdown 图片的 title（![alt](src \"说明\")）——alt 是给读屏用的，常常是文件名，不能直接当说明印出来。
+    // 编号由 CSS 计数器生成，所以调整图片顺序编号自动跟着走。行内混排的图片（同一段里还有文字）保持原样。
+    paragraph(text) {
+      const m = /^\s*(<img\b[^>]*>)\s*$/i.exec(text);
+      if (!m) return false;
+      const tm = /\stitle="([^"]*)"/i.exec(m[1]);
+      const title = tm ? tm[1] : '';
+      const img = m[1].replace(/\stitle="[^"]*"/i, '');
+      return `<figure class="print"><span class="mount">${img}</span><figcaption class="fig-cap${title ? '' : ' fig-empty'}">${title}</figcaption></figure>\n`;
+    },
     blockquote(quote) {
       const m = /^\s*<p>\[!([A-Za-z]+)\]\s*(?:<br\s*\/?>\s*)?/.exec(quote);
       const kind = m && m[1].toUpperCase();
@@ -64,7 +75,7 @@ function renderMarkdown(md) {
   const rawHtml = marked.parse(md || '');
   return sanitizeHtml(rawHtml, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-      'img', 'h1', 'h2', 'del', 'input', 'mark', 'aside',
+      'img', 'h1', 'h2', 'del', 'input', 'mark', 'aside', 'figure', 'figcaption', 'span',
     ]),
     allowedAttributes: {
       '*': ['class', 'id'],

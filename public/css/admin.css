@@ -194,6 +194,12 @@ td a:hover { text-decoration: underline; }
 .pv-body p { margin: 0 0 1rem; }
 .pv-body a { color: var(--pv-blue); }
 .pv-body img { max-width: 100%; border-radius: 2px; }
+/* 单独成段的图片会被渲染成 <figure class="print">（见 src/utils/markdown.js）；预览里不画相角，只保证不吃浏览器默认的缩进 + 图号能看到 */
+.pv-body { counter-reset: fig; }
+.pv-body figure.print { margin: 1rem 0; counter-increment: fig; }
+.pv-body figcaption.fig-cap { margin-top: 0.4rem; font-family: var(--font-mono, monospace); font-size: 0.72rem; color: #4B5A70; }
+.pv-body figcaption.fig-cap::before { content: 'FIG. ' counter(fig, decimal-leading-zero); color: #9C7A38; }
+.pv-body figcaption.fig-cap:not(.fig-empty)::before { content: 'FIG. ' counter(fig, decimal-leading-zero) '  \B7  '; }
 .pv-body ul, .pv-body ol { margin: 0 0 1rem; padding-left: 1.4rem; }
 .pv-body li:has(> input[type=checkbox]) { list-style: none; margin-left: -1.4rem; }
 .pv-body input[type=checkbox] { accent-color: var(--pv-blue); margin-right: 0.45rem; }

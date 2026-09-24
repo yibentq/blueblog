@@ -403,7 +403,29 @@ main {
 .article-body p { margin: 0 0 1.1rem; }
 .article-body a { color: var(--blue-700); }
 .article-body a:hover { color: var(--brass-dim); }
+.article-body { counter-reset: fig; }
 .article-body img { max-width: 100%; border-radius: var(--radius); }
+/* 相册里的一张照片：纸上贴着，四角压相角，下面一行图号（渲染见 src/utils/markdown.js 的 paragraph；老文章重新保存后才生效） */
+.article-body figure.print { margin: 2rem 0 1.8rem; counter-increment: fig; }
+.article-body .mount { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.article-body .mount img {
+  display: block; max-width: 100%; height: auto; border-radius: 0;
+  box-shadow: 0 1px 2px rgba(60, 38, 10, 0.5), 0 5px 12px rgba(60, 38, 10, 0.24);
+}
+.article-body .mount::before {
+  content: ''; position: absolute; inset: -5px; pointer-events: none; z-index: 1;
+  background:
+    url('/img/photo-corner-tl-v1.svg') left top / 38px 38px no-repeat,
+    url('/img/photo-corner-tr-v1.svg') right top / 38px 38px no-repeat,
+    url('/img/photo-corner-bl-v1.svg') left bottom / 38px 38px no-repeat,
+    url('/img/photo-corner-br-v1.svg') right bottom / 38px 38px no-repeat;
+}
+.article-body figcaption.fig-cap {
+  margin-top: 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em;
+  color: var(--ink-on-paper-dim); line-height: 1.5;
+}
+.article-body figcaption.fig-cap::before { content: 'FIG. ' counter(fig, decimal-leading-zero); color: var(--brass-dim); }
+.article-body figcaption.fig-cap:not(.fig-empty)::before { content: 'FIG. ' counter(fig, decimal-leading-zero) '  \B7  '; }
 .article-body blockquote {
   position: relative;
   margin: 1.6rem 0; padding: 0.3rem 0 0.3rem 1.5rem;
