@@ -9,6 +9,7 @@
 | `editor-stub.js` + `editor.test.py` | 后台编辑器：工具栏命令、快捷键、智能回车/Tab、预览、草稿暂存、大纲、粘贴上传占位符 | Playwright；**不连数据库、不走登录** |
 | `seed-comments.js` + `comments.test.py` | 评论收件箱：通过/撤销/键盘/批量/同访客/回复线程/文章绑定/前台线程 | 一次性 Postgres + 真实应用 + Playwright |
 | `seed-showcase.js` | 视觉走查：一篇用满所有写作语法的文章 + 普通文章 + 一条评论，起真实应用后截首页/文章/站点地图/404 | 一次性 Postgres + 真实应用 + Playwright |
+| `audit-editor.py` / `audit-frontend.py` | 真实浏览器审计（Python Playwright）：编辑器全部命令/上传/草稿/预览/保存；前台首页、评论全流程、手机溢出、feed | 一次性 Postgres + 真实应用 + Playwright |
 
 ## ⚠️ 安全
 

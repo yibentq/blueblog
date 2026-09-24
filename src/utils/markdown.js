@@ -105,7 +105,10 @@ function isolateImages(md) {
 
 function renderMarkdown(md) {
   headingSeen = {};
-  const rawHtml = marked.parse(isolateImages(md || ''));
+  // 浏览器提交表单时 textarea 的换行是 CRLF（\r\n），存进数据库的 content_md 就带着 \r。
+  // 先统一成 \n，否则按行处理的逻辑（isolateImages）会被行尾的 \r 挡住——v24 第一版就栽在这：
+  // 我在 node 里手写的测试串是 \n，真实浏览器提交的是 \r\n，\"图片在行尾\"的修正在线上根本不生效。
+  const rawHtml = marked.parse(isolateImages(String(md || '').replace(/\r\n?/g, '\n')));
   return sanitizeHtml(rawHtml, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
       'img', 'h1', 'h2', 'del', 'input', 'mark', 'aside', 'figure', 'figcaption', 'span',

@@ -89,7 +89,7 @@
     function transformLines(fn) {
       var collapsed = ta.selectionStart === ta.selectionEnd;
       var r = lineRange();
-      var out = fn(r.text.split('\n')).join('\n');
+      var out = fn(r.text.split('\n'), collapsed).join('\n');
       var end = r.ls + out.length;
       replaceRange(r.ls, r.le, out, collapsed ? end : r.ls, end);
     }
@@ -99,7 +99,9 @@
 
     function toggleHeading(level) {
       var prefix = new Array(level + 1).join('#') + ' ';
-      transformLines(function (lines) {
+      transformLines(function (lines, collapsed) {
+        // 光标停在空行上点按钮 = "我要在这里开始写一个标题"：直接放上记号，光标落在记号后面接着写
+        if (collapsed && lines.length === 1 && !lines[0].trim()) return [prefix];
         var allHave = lines.every(function (l) { return !l.trim() || (l.indexOf(prefix) === 0 && l.charAt(prefix.length) !== '#'); });
         return lines.map(function (l) {
           if (!l.trim()) return l;
@@ -110,13 +112,27 @@
     }
 
     function toggleQuote() {
-      transformLines(function (lines) {
+      transformLines(function (lines, collapsed) {
+        if (collapsed && lines.length === 1 && !lines[0].trim()) return ['> '];
         var allHave = lines.every(function (l) { return !l.trim() || /^>\s?/.test(l); });
         return lines.map(function (l) {
           if (!l.trim()) return l;
           return allHave ? l.replace(/^>\s?/, '') : '> ' + l;
         });
       });
+    }
+
+    // 有序列表新一项该用几号：紧挨着上面（中间最多隔一个空行——Markdown 里那仍是同一个列表）
+    // 若是同缩进的编号项，就接着它往下数；否则从 1 开始。
+    // 没有这个的话，逐行点\"编号\"每行都是 \"1.\"（站长 2026-09-24 反馈：写文章时编号永远是 1.）。
+    function nextOlNumber(lineStart, indent) {
+      var above = ta.value.slice(0, lineStart).split('\n');
+      above.pop(); // 最后一段是当前行本身之前的空串
+      var gap = 0;
+      while (above.length && !above[above.length - 1].trim() && gap < 1) { above.pop(); gap++; }
+      var prev = above.length ? above[above.length - 1] : '';
+      var m = /^(\s*)(\d+)\.\s/.exec(prev);
+      return m && m[1] === indent ? parseInt(m[2], 10) + 1 : 1;
     }
 
     // kind: 'ul' | 'ol' | 'task'
@@ -126,10 +142,17 @@
         ol: function (l) { return /^\s*\d+\.\s+/.test(l); },
         task: function (l) { return /^\s*[-*+]\s+\[[ xX]\]\s+/.test(l); },
       }[kind];
-      transformLines(function (lines) {
+      var lineStart = lineRange().ls;
+      transformLines(function (lines, collapsed) {
+        var lone = collapsed && lines.length === 1 && !lines[0].trim();
         var body = lines.filter(function (l) { return l.trim(); });
         var allHave = body.length > 0 && body.every(has);
         var n = 0;
+        if (kind === 'ol' && !allHave) {
+          var first = lone ? '' : stripListMark(body[0]);
+          n = nextOlNumber(lineStart, (/^\s*/.exec(first) || [''])[0]) - 1;
+        }
+        if (lone) return [kind === 'ol' ? (n + 1) + '. ' : kind === 'task' ? '- [ ] ' : '- '];
         return lines.map(function (l) {
           if (!l.trim()) return l;
           var bare = stripListMark(l);

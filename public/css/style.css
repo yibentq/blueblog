@@ -539,6 +539,8 @@ main {
 }
 .comment .comment-meta { font-family: var(--font-mono); font-size: 0.72rem; color: var(--line-white-dim); margin-bottom: 0.3rem; }
 .comment { scroll-margin-top: 1.5rem; }
+/* 评论是纯文本（服务端已转义），读者的换行要保留——不然多行评论会被压成一行 */
+.comment > p:not(.comment-meta) { white-space: pre-line; overflow-wrap: anywhere; }
 .comment:target { background-color: rgba(199, 154, 69, 0.1); border-radius: 3px; }
 .comment.reply { margin-left: 1.6rem; padding-left: 1rem; border-left: 2px solid rgba(199, 154, 69, 0.45); background-image: none; }
 .comment.by-author > p:not(.comment-meta) { color: var(--line-white); }
