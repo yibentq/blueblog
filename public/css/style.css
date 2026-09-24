@@ -454,8 +454,10 @@ main {
 
 /* ---------- 写作辅助语法在前台的呈现（和后台预览是同一套） ---------- */
 .article-body mark {
-  background: linear-gradient(transparent 58%, rgba(199, 154, 69, 0.5) 58%);
-  color: inherit; padding: 0 0.1em;
+  /* 红铅笔排线（tools/build-pencil.js）：不是荧光笔——这个站是图纸，红铅笔划重点才贴题 */
+  background: url('/img/pencil-hatch-v1.png') repeat-x left bottom 0.08em / 288px 14px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  color: inherit; padding: 0 0.12em;
 }
 .article-body h4 { font-family: var(--font-display); font-size: 1rem; margin: 1.3rem 0 0.5rem; letter-spacing: 0.02em; }
 .article-body h2[id], .article-body h3[id] { scroll-margin-top: 1.5rem; }
