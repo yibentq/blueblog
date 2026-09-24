@@ -70,9 +70,42 @@ marked.use({
   },
 });
 
+// 让\"图片在行首/行尾/独占一行\"都算\"想放一张图\"：后台编辑器在光标处插入 `![](url)`，前后不带空行，
+// 于是图片经常跟上下文字挤在同一个段落里（"文字\n![](x)"、"文字![](x)"、连着两张图），
+// 这样的段落不是\"整段只有一张图\"，v22 的相册渲染就不会触发（站长 2026-09-24 反馈：新文章图片没有四个角）。
+// 这里在解析前把这类图片各自提成独立段落。只处理行首/行尾的图片——行中间的图片仍是行内图；
+// 代码围栏、缩进代码、列表/引用/表格/标题行原样不动。文字与图片的先后顺序不变。
+const IMG_RE = '!\\[[^\\]\\n]*\\]\\([^)\\n]*\\)';
+const LEAD_IMG = new RegExp('^ {0,3}(' + IMG_RE + ')[ \\t]*');
+const TRAIL_IMG = new RegExp('[ \\t]*(' + IMG_RE + ')[ \\t]*$');
+function isolateImages(md) {
+  const out = [];
+  let fence = null;
+  for (const line of String(md).split('\n')) {
+    const f = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (fence) {
+      out.push(line);
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && /^ {0,3}[`~]+\s*$/.test(line)) fence = null;
+      continue;
+    }
+    if (f) { fence = f[1]; out.push(line); continue; }
+    if (/^( {4}|\t)/.test(line) || /^\s*([>|#]|[-*+]\s|\d+[.)]\s)/.test(line)) { out.push(line); continue; }
+    let rest = line, m;
+    const heads = [], tails = [];
+    while ((m = LEAD_IMG.exec(rest))) { heads.push(m[1]); rest = rest.slice(m[0].length); }
+    while ((m = TRAIL_IMG.exec(rest))) { tails.unshift(m[1]); rest = rest.slice(0, m.index); }
+    if (!heads.length && !tails.length) { out.push(line); continue; }
+    out.push('');
+    for (const img of heads) out.push(img, '');
+    if (rest.trim()) out.push(rest, '');
+    for (const img of tails) out.push(img, '');
+  }
+  return out.join('\n');
+}
+
 function renderMarkdown(md) {
   headingSeen = {};
-  const rawHtml = marked.parse(md || '');
+  const rawHtml = marked.parse(isolateImages(md || ''));
   return sanitizeHtml(rawHtml, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
       'img', 'h1', 'h2', 'del', 'input', 'mark', 'aside', 'figure', 'figcaption', 'span',

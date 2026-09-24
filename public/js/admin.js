@@ -382,6 +382,19 @@
       replaceRange(pos, pos, snippet, pos + snippet.length);
     }
 
+    // 图片要独占一个段落（前后各空一行），否则会跟相邻文字挤成同一段，前台就不会渲染成相册照片。
+    // 注意不能叫 insertBlock——上面已经有同名的"代码块/表格/分隔线"插入函数（同一作用域，重名会覆盖它）；
+    // 这里也不复用它：文件选择器会抢走焦点，图片必须按 lastCaretPos 插，而不是当前选区。
+    // 按光标前后已有的换行数补足：已经是空行就不再补，避免越插空行越多。
+    function insertImageBlock(snippet) {
+      var pos = Math.min(lastCaretPos, ta.value.length);
+      var before = ta.value.slice(0, pos), after = ta.value.slice(pos);
+      var lead = pos === 0 ? '' : before.slice(-2) === '\n\n' ? '' : before.slice(-1) === '\n' ? '\n' : '\n\n';
+      var trail = after.slice(0, 2) === '\n\n' ? '' : after.slice(0, 1) === '\n' ? '\n' : '\n\n';
+      var text = lead + snippet + trail;
+      replaceRange(pos, pos, text, pos + lead.length + snippet.length);
+    }
+
     function pickImage(autoInsert) {
       pickAutoInsert = !!autoInsert;
       fileInput.click();
@@ -400,7 +413,7 @@
       var token = '';
       if (opts.autoInsert) {
         token = '![上传中 #' + (++uploadSeq) + '…](uploading)';
-        insertAtCaret(token);
+        insertImageBlock(token);
       }
       var fd = new FormData();
       fd.append('image', file, file.name || 'pasted-image.png');
@@ -416,7 +429,7 @@
             var at = ta.value.indexOf(token);
             var md = '![](' + result.data.url + ')';
             if (at !== -1) replaceRange(at, at + token.length, md, at + md.length);
-            else insertAtCaret(md + '\n');
+            else insertImageBlock(md);
             setStatus('已上传并插入：' + result.data.url, false);
           } else {
             setStatus('上传成功，点下面的"插入到光标处"把它放进正文', false);
@@ -450,7 +463,7 @@
       insertBtn.className = 'btn secondary sm';
       insertBtn.textContent = '插入到光标处';
       insertBtn.addEventListener('click', function () {
-        insertAtCaret('![](' + url + ')\n');
+        insertImageBlock('![](' + url + ')');
         setStatus('已插入：' + url, false);
         scheduleStats();
       });
