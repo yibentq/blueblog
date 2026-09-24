@@ -8,6 +8,7 @@
 | `model.test.js` | `src/models/comment.js` 的真实 SQL：线程排序、parent 校验、批量、级联删除、非法 id | 一次性 Postgres |
 | `editor-stub.js` + `editor.test.py` | 后台编辑器：工具栏命令、快捷键、智能回车/Tab、预览、草稿暂存、大纲、粘贴上传占位符 | Playwright；**不连数据库、不走登录** |
 | `seed-comments.js` + `comments.test.py` | 评论收件箱：通过/撤销/键盘/批量/同访客/回复线程/文章绑定/前台线程 | 一次性 Postgres + 真实应用 + Playwright |
+| `seed-showcase.js` | 视觉走查：一篇用满所有写作语法的文章 + 普通文章 + 一条评论，起真实应用后截首页/文章/站点地图/404 | 一次性 Postgres + 真实应用 + Playwright |
 
 ## ⚠️ 安全
 
@@ -64,3 +65,10 @@ python3 tools/e2e/comments.test.py
 - `comments.test.py` 的部分断言依赖 `seed-comments.js` 的数据（例如"Third spam"这条要存在），
   改了种子数据要同步改断言。
 - 测试之间不完全独立：跑一遍会改变评论状态（通过/删除）。要重跑请 `TRUNCATE comments, posts CASCADE` 后重新 seed。
+
+## 沙箱里的实测记录（2026-09-24）
+
+- `apt-get update && apt-get install -y postgresql` **可行**（apt 源在允许域名内；`deb.nodesource.com` 的签名报错可忽略）；用 root 时 `initdb` 要 `su postgres -c`，见上面的步骤。
+- Playwright 的 Chromium **可以启动**——HANDOFF 里早先写的"沙箱没有无头浏览器"已过时；真实页面截图是可行的（Google Fonts 仍 403，字体回退系统字体）。
+- 沙箱里**后台进程不会跨命令存活**（Postgres、`node src/app.js` 都要在同一条命令里确认在跑，不在就重启）。
+- 截整页（`full_page=True`）时 `body` 的 `background-attachment: fixed` 会在每个视口高度处出现一道明暗接缝，是截图伪影，不是真 bug。
