@@ -3,7 +3,7 @@
 <%- include('partials/head') %>
 <body>
   <%- include('partials/header') %>
-  <main<%= notebookEnabled ? ' class="has-notebook"' : '' %>>
+  <main>
     <% if (tagName) { %>
       <div class="page-heading">
         <h1>标签：<%= tagName %></h1>
@@ -12,11 +12,10 @@
     <% } %>
 
     <%
-    // 首页"翻书"视觉层是渐进增强：下面这份 #plain-post-list 永远原样服务端渲染，
-    // 是无 JS 环境/搜索引擎爬虫看到的兜底（docs/BOOK_DESIGN.md 第7节），
-    // 语义化结构（真实 <a href>、h2 标题层级）完全不变。
-    // 只有 notebookEnabled 为真时才会输出 #notebook-book 容器；它默认 hidden，
-    // 只有 public/js/notebook.js 检测到桌面宽度 + JS 可用时才会现身并隐藏掉
+    // 首页"日记目录"视觉层是渐进增强：下面这份 #plain-post-list 永远原样服务端渲染，
+    // 是无 JS 环境/搜索引擎爬虫看到的兜底，语义化结构（真实 <a href>、h2 标题层级）
+    // 完全不变。只有 notebookEnabled 为真时才会输出 #notebook-book 容器；它默认
+    // hidden，只有 public/js/notebook.js 检测到桌面宽度 + JS 可用时才会现身并隐藏掉
     // 这份卡片列表——移动端、无 JS、爬虫三种情况下都只会看到下面这份列表。
     %>
     <div id="plain-post-list">
@@ -51,7 +50,7 @@
     </div>
 
     <% if (notebookEnabled) { %>
-      <%- include('partials/notebook', { notebook }) %>
+      <%- include('partials/notebook') %>
     <% } %>
   </main>
   <%- include('partials/footer') %>

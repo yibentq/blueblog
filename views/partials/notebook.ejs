@@ -1,70 +1,35 @@
-<section id="notebook-book" class="notebook" hidden aria-label="文章目录（手帐视图）">
-  <p id="nb-error" class="nb-error" hidden></p>
-
-  <div class="nb-spread">
-    <!-- 左页：封面，复用线上贴图 + 真实品牌签名（服务端渲染，不是画一个像的） -->
-    <div class="nb-cover">
-      <div class="nb-cover-stitch"></div>
-      <div class="nb-emblem">
-        <div class="nb-emblem-light"><%- notebook.sigLight %></div>
-        <div class="nb-emblem-dark"><%- notebook.sigDark %></div>
-      </div>
-      <div class="nb-ribbon"></div>
+<%
+// 首页"日记目录"视觉层——渐进增强，不是一套平行的内容系统。
+// 真正的内容和链接就是 index.ejs 里那份 #plain-post-list：每个标题都是
+// 真实的 <a href="/p/:slug">，无 JS / 搜索引擎爬虫看到的是同一份数据。
+// 这里只是给桌面宽度、JS 可用时，换一层更像"翻开的日记本目录"的外观，
+// 加上搜索/标签/季度筛选——列表条目本身还是真实链接，点击就是普通跳转，
+// 没有翻页动效，也没有单独的"文章片段"接口（2026-09-23 起，历史见
+// docs/HANDOFF.md v11：之前那版两页对开+3D翻页动效已经放弃）。
+%>
+<section id="notebook-book" class="nb-page post-card" hidden aria-label="文章目录">
+  <header class="nb-page-head">
+    <div class="nb-page-head-row">
+      <h2 class="nb-page-title">目录</h2>
+      <span id="nb-vol" class="nb-page-vol"></span>
     </div>
-
-    <!-- 装订缝：书脊分册标签挂在这里，点击切换分册 -->
-    <div class="nb-gutter">
-      <div class="nb-spine-tabs" id="nb-spine-tabs"></div>
+    <div class="nb-page-controls">
+      <input id="nb-search" class="nb-search" type="search" placeholder="搜索文章…" autocomplete="off">
+      <select id="nb-volume-select" class="nb-volume-select" aria-label="按季度筛选"></select>
     </div>
+    <div id="nb-tags" class="nb-tags"></div>
+  </header>
 
-    <!-- 右页：目录，条目由 JS 渲染；便签贴在页面外围 -->
-    <div class="nb-toc-page" id="nb-toc-page">
-      <div class="nb-toc-header">
-        <span class="nb-vol" id="nb-vol-label">—</span>
-        <span class="nb-page-no" id="nb-page-no">—</span>
-      </div>
-      <div class="nb-entries" id="nb-entries" aria-live="polite">
-        <p class="nb-placeholder">加载中…</p>
-      </div>
-      <div class="nb-pager">
-        <button type="button" id="nb-prev" class="nb-pager-btn" disabled aria-label="上一页">‹ 上一页</button>
-        <button type="button" id="nb-next" class="nb-pager-btn" disabled aria-label="下一页">下一页 ›</button>
-      </div>
+  <ol id="nb-entries" class="nb-entries"></ol>
 
-      <!-- 标签/搜索便签：夹在目录页外围，露出一角，点击才展开（不用 hover） -->
-      <div class="nb-note nb-note-tags" id="nb-note-tags">
-        <button type="button" class="nb-note-tab" id="nb-note-tags-tab" aria-expanded="false" aria-controls="nb-note-tags-drawer">
-          <span class="nb-note-tab-icon" aria-hidden="true">#</span>
-          <span class="nb-note-tab-text">标签</span>
-        </button>
-        <div class="nb-note-drawer" id="nb-note-tags-drawer" hidden>
-          <p class="nb-note-drawer-title">按标签看</p>
-          <div class="nb-tag-cloud" id="nb-tag-cloud"><p class="nb-placeholder">加载中…</p></div>
-        </div>
-      </div>
+  <p id="nb-empty" class="nb-empty" hidden>没有找到相关文章。</p>
+  <p id="nb-error" class="nb-empty nb-error" hidden></p>
 
-      <div class="nb-note nb-note-search" id="nb-note-search">
-        <button type="button" class="nb-note-tab" id="nb-note-search-tab" aria-expanded="false" aria-controls="nb-note-search-drawer">
-          <span class="nb-note-tab-icon" aria-hidden="true">⌕</span>
-          <span class="nb-note-tab-text">搜索</span>
-        </button>
-        <div class="nb-note-drawer" id="nb-note-search-drawer" hidden>
-          <p class="nb-note-drawer-title">搜索</p>
-          <input type="search" id="nb-search-input" class="nb-search-input" placeholder="标题或摘要…" autocomplete="off">
-          <div class="nb-search-results" id="nb-search-results"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 点击目录条目 → 全文页：哗啦啦翻过一叠纸的动效舞台，进入前不可见 -->
-  <div class="nb-stage" id="nb-stage" aria-hidden="true">
-    <div class="nb-flying-page" id="nb-fp0"></div>
-    <div class="nb-flying-page" id="nb-fp1"></div>
-    <div class="nb-flying-page" id="nb-fp2"></div>
-    <div class="nb-flying-page" id="nb-fp3"></div>
-    <div class="nb-dest" id="nb-dest" role="dialog" aria-modal="true" aria-label="文章全文"></div>
-  </div>
+  <nav id="nb-pagination" class="pagination nb-pagination" hidden>
+    <a href="#" id="nb-prev">&larr; 上一页</a>
+    <span id="nb-page-no"></span>
+    <a href="#" id="nb-next">下一页 &rarr;</a>
+  </nav>
 </section>
 
 <script nonce="<%= cspNonce %>" src="/js/notebook.js?v=<%= assetVersion %>" defer></script>
