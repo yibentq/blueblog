@@ -126,9 +126,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   content: '';
   /* 烫金：贴图来自 tools/build-foil.js（凹槽高度场 + 拉丝金属反光 + 转印渐薄漏烫），
      渐隐不是渐变到透明，是箔片覆盖率逐渐下降。图高 10px，压在标题栏下沿那条 1px 线上居中。 */
-  position: absolute; left: 0; bottom: -6px; height: 10px;
-  width: clamp(220px, 26vw, 520px);
-  background: url('/img/foil-line-v1.png') left center / 100% 100% no-repeat;
+  position: absolute; left: 0; right: 0; bottom: -6px; height: 10px;
+  /* 通栏：整条都是烫金（v2，自然尺寸 1:1 从左端铺，3840px 够 4K 宽屏）；原来只有左边 26vw 是箔、右边退成一条 1px 细线 */
+  background: url('/img/foil-line-wide-v2.png') left center / 3840px 10px no-repeat;
   pointer-events: none;
 }
 .titleblock-inner {
@@ -579,9 +579,8 @@ main {
 footer { position: relative; flex-shrink: 0; border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
 footer::before {
   content: '';
-  position: absolute; left: 0; top: -6px; height: 10px;
-  width: clamp(220px, 26vw, 520px);
-  background: url('/img/foil-line-v1.png') left center / 100% 100% no-repeat;
+  position: absolute; left: 0; right: 0; top: -6px; height: 10px;
+  background: url('/img/foil-line-wide-v2.png') left center / 3840px 10px no-repeat;
   pointer-events: none;
 }
 footer .footer-inner {

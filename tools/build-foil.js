@@ -23,7 +23,7 @@
  *      是"整条线连续有记忆的偏移"，不是逐点抖动。
  *
  * 输出（透明底 PNG，叠在皮革/纸上）：
- *   public/img/foil-line-v1.png   长线：标题栏下沿 / 页脚上沿，从左端实到右端渐无
+ *   public/img/foil-line-wide-v2.png  通栏长线：标题栏下沿 / 页脚上沿，整条都是烫金（v1 的 520px 渐隐版已弃用）
  *   public/img/foil-bar-v1.png    短横：文章标题下的那一小段
  *
  * 用法：node tools/build-foil.js            重新生成
@@ -88,7 +88,9 @@ function ramp(r) {
  * @param height  贴图高度(px，1x)
  * @param foilW   槽底（箔面）宽度(px，1x)
  * @param bevel   两侧斜坡宽度(px，1x)
- * @param fade    true：转印覆盖率沿长度下降到 0（长线）；false：整段基本完整，只有边角轻微磨损（短横）
+ * @param fade    true：转印覆盖率沿长度下降到 0（旧的 520px 长线，已不再使用）；
+ *                'wide'：通栏长线——前 ~900px 从完整慢慢过渡到"有斑驳但基本都在"，之后一直保持这个状态直到贴图末端（站长 2026-09-24：
+ *                前面好看、后面只剩细线，要整条都是烫金，所以覆盖率不再降到 0）；false：整段基本完整，只有边角轻微磨损（短横）
  * @param seed    每张图独立的种子
  */
 function build({ length, height, foilW, bevel, fade, seed }) {
@@ -124,7 +126,8 @@ function build({ length, height, foilW, bevel, fade, seed }) {
     // 漏烫阈值随位置抬高：长线越往右越薄；短横只在两端轻微磨损
     let thr;
     // 值噪声的实际分布集中在 0.25~0.75，阈值要在这个区间里扫过，覆盖率才是均匀渐降而不是突然断掉
-    if (fade) thr = 0.2 + 0.6 * Math.pow(smooth(0.03, 1, u), 0.85);
+    if (fade === 'wide') thr = 0.2 + 0.11 * Math.pow(smooth(0, 900 * S, x), 0.85); // 按绝对像素算：前 900px 从 0.20 升到 0.31 后持平（0.37 试过：中段暗缺口太多，读起来又像断线）
+    else if (fade) thr = 0.2 + 0.6 * Math.pow(smooth(0.03, 1, u), 0.85);
     else thr = 0.18 + 0.5 * smooth(0.5, 1, u) + 0.08 * smooth(0.12, 0, u);
     const big = nLow(x / (26 * S), y / (2.2 * S) + 11);
     const fine = nSpeck(x / (1.6 * S), y / (1.3 * S) + 5);
@@ -201,7 +204,7 @@ function build({ length, height, foilW, bevel, fade, seed }) {
       }
 
       // 长线末端：烫版压力收尽，凹槽本身也渐渐浅到消失（不留一道硬切的暗槽）
-      A *= fade ? 1 - smooth(0.8, 1, x / W) : 1 - 0.85 * smooth(0.93, 1, x / W);
+      A *= fade === 'wide' ? 1 - smooth(0.985, 1, x / W) : fade ? 1 - smooth(0.8, 1, x / W) : 1 - 0.85 * smooth(0.93, 1, x / W);
       if (A < 0.002) { R = SHADOW[0]; G = SHADOW[1]; B = SHADOW[2]; A = 0; } // 透明像素的 RGB 也填成暗金，避免缩小时出黑边
       buf[o] = Math.round(Math.max(0, Math.min(255, R)));
       buf[o + 1] = Math.round(Math.max(0, Math.min(255, G)));
@@ -214,7 +217,8 @@ function build({ length, height, foilW, bevel, fade, seed }) {
 
 const RECIPES = {
   // 长线：标题栏下沿、页脚上沿。高 10，槽底 2.4px，两侧各 1.6px 斜坡。
-  line: { length: 520, height: 10, foilW: 2.4, bevel: 1.6, fade: true, seed: 4107 },
+  // 通栏（v2）：标题栏下沿 / 页脚上沿，自然尺寸 1:1 铺，左端起 3840px（覆盖 4K 宽屏）。同一个 seed，所以左端的拉丝/反光带跟 v1 一脉相承。
+  'line-wide': { length: 3840, height: 10, foilW: 2.4, bevel: 1.6, fade: 'wide', seed: 4107, version: 'v2' },
   // 短横：文章标题下。比长线粗一档（原本就是 3px 粗的短横），左端完整，右端有轻微漏烫收尾（原来的短横也是往右渐隐）。
   bar: { length: 96, height: 12, foilW: 3.6, bevel: 1.9, fade: false, seed: 5219 },
 };
@@ -228,14 +232,15 @@ async function main() {
       .resize(r.length, r.height, { kernel: 'lanczos3' })
       .png({ compressionLevel: 9 })
       .toBuffer();
-    const file = `foil-${name}-v1.png`;
+    const file = `foil-${name}-${r.version || 'v1'}.png`;
     await sharp(png).toFile(path.join(outDir, file));
     console.log(`[foil] ${file} 已生成 (${r.length}x${r.height})`);
     if (preview) {
-      const scale = name === 'line' ? 3 : 8;
-      const big = await sharp(png).resize(r.length * scale, r.height * scale, { kernel: 'nearest' }).png().toBuffer();
+      const scale = r.length > 1000 ? 2 : 8;
+      const shown = r.length > 1000 ? 1400 : r.length; // 通栏只预览左端 1400px
+      const big = await sharp(png).extract({ left: 0, top: 0, width: shown, height: r.height }).resize(shown * scale, r.height * scale, { kernel: 'nearest' }).png().toBuffer();
       for (const [bgName, bg] of [['navy', '#14243d'], ['cream', '#efe4cc']]) {
-        await sharp({ create: { width: r.length * scale, height: Math.round(r.height * scale + 40 * scale / 3), channels: 3, background: bg } })
+        await sharp({ create: { width: shown * scale, height: Math.round(r.height * scale + 40 * scale / 3), channels: 3, background: bg } })
           .composite([{ input: big, left: 0, top: Math.round(20 * scale / 3) }])
           .png().toFile(`/tmp/foil-${name}-${bgName}-preview.png`);
       }
