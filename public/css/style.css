@@ -292,9 +292,15 @@ main {
 .post-meta .tag:hover { color: var(--brass-dim); }
 
 /* ---------- 分页 ---------- */
-
+/* 箭头是 src/utils/brand.js 的 paginationArrow()：签名同一套"罗盘花饰"(rosette) 派生出的
+   指针图形，不再是 &larr;/&rarr; 这种零设计的文字符号。SVG 是服务端内联渲染的，
+   vertical-align 对齐用 flex，不用文字基线（花饰图形没有"基线"这个概念）。 */
 .pagination { display: flex; justify-content: space-between; margin-top: 2rem; font-family: var(--font-mono); font-size: 0.85rem; }
+.pagination a, .pagination span.disabled { display: inline-flex; align-items: center; gap: 0.35rem; }
 .pagination a { text-decoration: none; }
+.pagination .pagination-arrow { display: block; transition: transform .15s ease; }
+.pagination a:hover svg.pagination-arrow:first-child { transform: translateX(-2px); }
+.pagination a:hover svg.pagination-arrow:last-child { transform: translateX(2px); }
 .pagination span.disabled { color: rgba(234,240,248,0.25); }
 
 /* ---------- 文章详情页 ---------- */

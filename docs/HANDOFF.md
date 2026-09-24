@@ -38,6 +38,7 @@
   **这份比 CYANOTYPE_REDESIGN.md 更新，下一个接手者先读这份**。还没有定案，下一步做什么见该文档第 5 节。
 
 - 最近几轮改动记录：
+  - **v13** 任务B第二项：分页箭头改成 `rosette()` 派生的指针图形（见下方 v13 节）
   - **v12** 任务B第一项：卡片缝线换成真圆柱截面渲染（`94eb5b2`）
   - **v3** 写作系统升级 + 皮革质感视觉（`fb9a4a8`）
   - **v3.1** 卡片质感分层修正（`8f279a7`）
@@ -109,6 +110,26 @@ cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm insta
 - 水印：老图不补新水印；没有"原图存一份、对外给带水印版"；签名无中文版/单色印刷版（v2）
 - 后台目前是纯色 UI（没上皮革质感，后台优先好用）；旧视图里失效的行内 style 可以顺手清理
 - 站长确认后的收尾：把"等站长确认"里的项目根据反馈更新成结论
+
+---
+
+## v13 · 2026-09-24 · 任务B第二项：分页箭头（`rosette()` 派生，`docs/UNFORGEABLE_DESIGN.md` 第6节"★已确认要做"项）
+
+把首页分页里写死的 `&larr;`/`&rarr;` 换成 `src/utils/brand.js` 新增的 `paginationArrow(direction, opts)`：
+花饰（`rosette`）当轴心，一根指针从花心指向翻页方向，针尖是实心三角。花饰半径和透明度故意压低一档——
+第一版花饰和指针一样粗，两根"胡须"从花心戳出去，看不出方向，调过。
+
+### 改了什么
+
+- `src/utils/brand.js`：新增并导出 `paginationArrow`。
+- `src/app.js`：把它挂到 `res.locals.paginationArrow`（EJS 里没法 require，跟 `signatureMark` 同一个做法），默认色烫金 `#C79A45`。
+- `views/index.ejs`：分页四处换成内联 SVG；不可点的一侧用 `opacity: 0.32`。
+- `public/css/style.css`：`.pagination` 里的链接/禁用项改 `inline-flex` 对齐，hover 时箭头朝指向方向微移 2px。
+
+### 范围与坑
+
+- **只改了前台**。后台（`admin/*`）的 `&larr;`/`&rarr;` 没动——后台约定是纯色 UI、优先好用，不上品牌质感。`views/partials/notebook.ejs` 里的那两个是 v11 之后已经没有路由指向的死代码，也没动。
+- 已用真实 CSS + 真实 EJS 片段截图核对过三种状态（首页/中间页/末页），箭头方向、对齐、禁用态都对；没有连真实数据库跑整页。
 
 ---
 

@@ -9,7 +9,7 @@ const cookieParser = require('cookie-parser');
 
 const pool = require('./config/db');
 const { buildHelmet, globalLimiter } = require('./middleware/security');
-const { buildSignature } = require('./utils/brand');
+const { buildSignature, paginationArrow } = require('./utils/brand');
 
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
@@ -77,6 +77,9 @@ app.use((req, res, next) => {
   // 模板里画签名词标用的助手。EJS 里没法 require，所以在这里挂到 locals 上。
   res.locals.signatureMark = (opts = {}) =>
     buildSignature({ ink: '#EAF0F8', accent: '#C79A45', stroke: 5, ...opts }).svg;
+  // 分页箭头助手，同样因为 EJS 里没法 require。默认颜色是烫金色，和缝线/水印同一个色。
+  res.locals.paginationArrow = (direction, opts = {}) =>
+    paginationArrow(direction, { color: '#C79A45', ...opts });
   next();
 });
 

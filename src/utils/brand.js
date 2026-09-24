@@ -88,6 +88,31 @@ function rosette(cx, cy, r, color, opacity, sw) {
   return `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="${(sw || 0.7).toFixed(2)}" stroke-opacity="${opacity}"/>`;
 }
 
+/**
+ * 分页箭头：不是发明新图形语言，是签名同一套"罗盘花饰"(rosette) 的延伸——
+ * 花饰本身当指针的轴心，一根指针状的针从花心指向翻页方向，针尖是一个三角箭头。
+ * 花饰半径故意比指针细得多、透明度也压低一档，眼睛第一时间抓到的是"指针指向哪"，
+ * 花饰只是轴心处的一点装饰，不会和指针抢注意力（这是第一版原型被推翻后调过的地方——
+ * 花饰和指针一样粗时，两根"胡须"从花心戳出去，完全看不出方向）。
+ */
+function paginationArrow(direction, opts = {}) {
+  const { color = '#C79A45', size = 26, opacity = 0.95 } = opts;
+  const cx = size / 2, cy = size / 2;
+  const r = size * 0.19;
+  const sw = Math.max(0.8, size * 0.032);
+  const rosettePath = rosette(cx, cy, r, color, opacity * 0.9, sw);
+  const dir = direction === 'prev' ? -1 : 1;
+  const needleSW = Math.max(1.4, size * 0.06);
+  const headLen = size * 0.22;
+  const headW = size * 0.15;
+  const baseX = cx + dir * (r * 0.85);
+  const tipX = cx + dir * (size * 0.46);
+  const hx = tipX - dir * headLen;
+  const needle = `<line x1="${baseX.toFixed(2)}" y1="${cy.toFixed(2)}" x2="${hx.toFixed(2)}" y2="${cy.toFixed(2)}" stroke="${color}" stroke-width="${needleSW.toFixed(2)}" stroke-linecap="round" stroke-opacity="${opacity}"/>`;
+  const arrowHead = `<path d="M${tipX.toFixed(2)} ${cy.toFixed(2)} L${hx.toFixed(2)} ${(cy - headW).toFixed(2)} L${hx.toFixed(2)} ${(cy + headW).toFixed(2)} Z" fill="${color}" fill-opacity="${opacity}"/>`;
+  return `<svg class="pagination-arrow" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${rosettePath}${needle}${arrowHead}</svg>`;
+}
+
 function guilloche(color, opacity, sw) {
   // 横贯整个签名下方的扭索纹带。故意压到很低的不透明度：
   // 正常观看它只是纸面上的一点织纹，放大才看得出是一条连续的数学曲线。
@@ -254,6 +279,7 @@ function buildSignature(o = {}) {
 
 module.exports = {
   buildSignature,
+  paginationArrow,
   serialFor,
   VIEW_W,
   VIEW_H,
