@@ -52,13 +52,23 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; height: 100%; }
 
 /* 选中高亮——不用默认那种惨淡的浏览器蓝，换成烫金色配深墨色文字，
    呼应罗盘水印和卡片描边用的同一个烫金色，选中一段文字也像用蜡封章圈出来的感觉 */
 ::selection { background: var(--brass); color: var(--ink); }
 ::-moz-selection { background: var(--brass); color: var(--ink); }
 
+/* ---------- 整页骨架：header / main / footer 三段式，做成"贴底footer" ----------
+   2026-09-24：站长反馈首页目录卡片"被上下两条烫金线夹得不舒服"——根源是过去
+   body 就是普通文档流，内容一短、视口一高，footer 就紧跟在内容后面，下面
+   剩一大截空白靛蓝背景，卡片看起来偏在页面上半部，比例很随意。
+   现在 body 是一列 flex，main 用 flex:1 撑满 header 和 footer 之间的剩余空间，
+   footer 因此始终贴在视口底部（内容多的长文章页不受影响——flex-shrink:0
+   保证 main 绝不会被压缩到比内容还矮）。首页卡片这类"内容比视口矮"的页面，
+   再配合下面 main 的 justify-content:center，会稳稳"浮"在 header/footer
+   之间的正中间，而不是贴着 header 底部；内容够长的页面（长文章、评论多的
+   页面）自然撑满，两条线不会去挤它。 ---------- */
 /* ---------- 页面底：靛蓝皮革 + 压印线格 ----------
    蓝图的线格不再是"画"在纸上的白线，而是压进皮里的凹痕：
    每条线 = 一道深色凹槽 + 紧贴的一道浅色高光（光从左上来，凹槽的右/下沿受光），
@@ -66,6 +76,9 @@ html { -webkit-text-size-adjust: 100%; }
    缝纫师傅打孔定位用的那种。整块皮在四角做了暗角，像灯光打在桌面上。 */
 body {
   margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background-color: var(--blue-900);
   color: var(--line-white);
   font-family: var(--font-body);
@@ -109,6 +122,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .titleblock {
   position: relative;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--line-white-dim);
   padding: 1.4rem 1.5rem;
 }
@@ -168,7 +182,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ---------- 正文容器 ---------- */
 
-main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+/* flex:1 让 main 撑满 header/footer 之间的剩余空间（贴底footer的关键），
+   flex-shrink:0 保证内容比这块空间还高时，main 绝不会被压缩、盖住自己的内容。
+   display:flex + justify-content:center 让内容在这块空间里居中——页面短
+   （首页目录、短文章、404）时稳稳浮在正中间；页面长时留白被内容自然占满，
+   跟普通文档流没有区别，两条烫金线不会去挤它。 */
+main {
+  max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem;
+  flex: 1 0 auto; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: center;
+}
 
 .page-heading { margin: 0 0 2rem; }
 .page-heading h1 {
@@ -416,7 +439,7 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
 /* ---------- 页脚 ---------- */
 
-footer { position: relative; border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
+footer { position: relative; flex-shrink: 0; border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
 footer::before {
   content: '';
   position: absolute; left: 0; right: 0; top: -1px; height: 1px;
