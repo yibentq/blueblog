@@ -262,13 +262,75 @@ main {
 
 .post-card.pinned { padding-top: 2.2rem; }
 .pinned-label {
-  position: absolute; top: 0; right: 1.8rem; margin: 0;
-  font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.08em;
-  color: #3b2a0c; background: linear-gradient(180deg, #d6ae5c, var(--brass));
-  padding: 0.5rem 0.55rem 0.7rem;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); /* 书签丝带，下端燕尾 */
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+  /* 书签丝带：一条靛蓝皮裁出燕尾，两侧缝线，字是烫金压进皮里。
+     clip-path 会裁掉外投影，所以这里不用 box-shadow 立体感，靠内高光/内暗边和皮革粒面自己撑。 */
+  position: absolute; top: 0; right: 1.8rem; margin: 0; z-index: 1;
+  font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; color: #DDB562;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 236, 190, 0.18);
+  padding: 0.55rem 0.7rem 0.95rem;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); /* 下端燕尾 */
+  background-color: var(--blue-900); background-image: var(--leather-navy); background-size: 384px 384px;
+  box-shadow: inset 0 1px 0 rgba(150, 190, 240, 0.28), inset 1px 0 0 rgba(150, 190, 240, 0.12), inset -1px 0 0 rgba(2, 9, 20, 0.5);
 }
+.pinned-label::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    url('/img/stitch-edgeAlt-vert-v1.png') repeat-y left  calc(3px - 6px) top 0 / 12px 30px,
+    url('/img/stitch-edgeAlt-vert-v1.png') repeat-y right calc(3px - 6px) top 0 / 12px 30px;
+  opacity: 0.95;
+}
+
+/* ---------- 皮革贴片：标签 / 按钮 / 作者徽章 / 标签计数 ----------
+   它们原来分别是：全网通用的描边药丸、纯色矩形按钮、纯色小方块——都是"给文字套个框"。
+   现在统一成同一个物件：一小块皮子裁下来，边缘缝一圈线。
+   规则：贴片用跟所在底色**相反**的那种皮（米黄卡片上用靛蓝皮，靛蓝桌面上用小牛皮），
+   否则贴片在底上"消失"。粒面尺寸沿用卡片同一比例（384px），所以皮的颗粒大小全站一致——
+   缝线是 tools/build-stitch.js 同一批贴图缩到 0.55 倍，线的粗细也相应变细，不是另画一套。
+   文字是"压进皮里"（盲压）而不是"印在皮上"：靛蓝皮上字带一线暗上沿，小牛皮上带一线亮下沿，
+   跟标题的 letterpress 同一个逻辑。 */
+.article-tags a, .btn, .comment-author-badge, .tag-index-item .tag-count {
+  --st: 4px;   /* 缝线距边 */
+  position: relative; isolation: isolate; display: inline-block; border-radius: 3px;
+  line-height: 1.5; text-decoration: none; overflow: hidden;
+}
+.article-tags a::before, .btn::before, .comment-author-badge::before, .tag-index-item .tag-count::before,
+.article-tags a::after, .btn::after, .comment-author-badge::after, .tag-index-item .tag-count::after {
+  content: ''; position: absolute; z-index: -1; pointer-events: none; opacity: 0.95;
+}
+/* 横边和竖边分给两个伪元素，各自在两头让出一个线径的位置——
+   缝线在角上是"转弯"，不是横竖两条线叠在一起挤成一坨。 */
+.article-tags a::before, .btn::before, .comment-author-badge::before, .tag-index-item .tag-count::before {
+  inset: 0 calc(var(--st) + 3px);
+  background:
+    url('/img/stitch-edge-v1.png') repeat-x left 0 top calc(var(--st) - 6px)    / 30px 12px,
+    url('/img/stitch-edge-v1.png') repeat-x left 0 bottom calc(var(--st) - 6px) / 30px 12px;
+}
+.article-tags a::after, .btn::after, .comment-author-badge::after, .tag-index-item .tag-count::after {
+  inset: calc(var(--st) + 3px) 0;
+  background:
+    url('/img/stitch-edgeAlt-vert-v1.png') repeat-y left calc(var(--st) - 6px) top 0  / 12px 30px,
+    url('/img/stitch-edgeAlt-vert-v1.png') repeat-y right calc(var(--st) - 6px) top 0 / 12px 30px;
+}
+.comment-author-badge, .tag-index-item .tag-count { --st: 3.5px; }
+
+/* 靛蓝皮（用在米黄卡片上） */
+.article-tags a {
+  background-color: var(--blue-900); background-image: var(--leather-navy); background-size: 384px 384px;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 1px 0 rgba(150, 190, 240, 0.3), inset 0 -1px 0 rgba(2, 9, 20, 0.55), 0 1px 1px rgba(74, 46, 10, 0.4);
+}
+/* 小牛皮（用在靛蓝桌面上） */
+.btn, .comment-author-badge, .tag-index-item .tag-count {
+  background-color: var(--paper); background-image: var(--leather-calf); background-size: 384px 384px;
+  color: var(--ink-on-paper); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -1px 0 rgba(96, 64, 26, 0.35), 0 1px 2px rgba(2, 9, 20, 0.55);
+}
+.article-tags a:hover, .btn:hover { filter: brightness(1.1); }
+@media (prefers-reduced-motion: no-preference) {
+  .article-tags a, .btn { transition: filter .15s ease, transform .1s ease; }
+}
+.btn:active { transform: translateY(1px); box-shadow: inset 0 1px 3px rgba(96, 64, 26, 0.45), 0 0 0 rgba(0, 0, 0, 0); }
+.article-tags a:hover { color: var(--brass); }
 
 .post-card h2 { margin: 0 0 0.5rem; font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; line-height: 1.3; }
 .post-card h2 a { color: var(--ink-on-paper); text-decoration: none; }
@@ -375,10 +437,10 @@ main {
 
 .article-tags { margin-top: 2rem; display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .article-tags a {
-  font-family: var(--font-mono); font-size: 0.75rem; color: var(--blue-700);
-  border: 1px solid rgba(29,78,137,0.3); border-radius: 999px; padding: 0.2rem 0.7rem; text-decoration: none;
+  /* 靛蓝皮贴片：见下方"皮革贴片"一节的共用规则（材质、缝边、压印字） */
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--line-white); text-decoration: none;
+  padding: 0.34rem 1rem;
 }
-.article-tags a:hover { border-color: var(--brass); color: var(--brass-dim); }
 
 /* ---------- 写作辅助语法在前台的呈现（和后台预览是同一套） ---------- */
 .article-body mark {
@@ -435,8 +497,8 @@ main {
 .comment.reply { margin-left: 1.6rem; padding-left: 1rem; border-left: 2px solid rgba(199, 154, 69, 0.45); border-top-style: solid; border-top-color: transparent; }
 .comment.by-author > p:not(.comment-meta) { color: var(--line-white); }
 .comment-author-badge {
-  display: inline-block; margin-left: 0.3rem; padding: 0 0.4rem; border-radius: 2px; font-size: 0.64rem; letter-spacing: 0.06em;
-  background: var(--brass); color: #2a1d06;
+  /* 小牛皮贴片（评论区在靛蓝底上，贴片用相反的那种皮）；小尺寸版，缝线内缩更少 */
+  margin-left: 0.4rem; padding: 0.14rem 0.78rem; font-size: 0.64rem; letter-spacing: 0.06em; vertical-align: 0.06em;
 }
 .comment-form { margin-top: 1.5rem; display: grid; gap: 0.7rem; }
 .comment-form input, .comment-form textarea {
@@ -445,10 +507,9 @@ main {
 }
 .comment-form .hp { position: absolute; left: -9999px; }
 .btn {
-  font-family: var(--font-mono); font-size: 0.82rem; background: var(--brass); color: var(--ink);
-  border: none; border-radius: var(--radius); padding: 0.6rem 1.1rem; cursor: pointer; width: fit-content;
+  font-family: var(--font-mono); font-size: 0.82rem; cursor: pointer; width: fit-content;
+  padding: 0.66rem 1.5rem; border: 0;
 }
-.btn:hover { background: var(--line-white); }
 .notice { font-family: var(--font-mono); font-size: 0.8rem; color: var(--brass); margin-top: 0.5rem; }
 
 /* ---------- 页脚 ---------- */
@@ -491,8 +552,7 @@ footer a { color: var(--line-white-dim); }
 }
 .tag-index-item:hover { color: var(--brass); }
 .tag-index-item .tag-count {
-  font-family: var(--font-mono); font-size: 0.65rem; color: var(--brass);
-  border: 1px solid rgba(199, 154, 69, 0.4); border-radius: 999px; padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono); font-size: 0.65rem; padding: 0.1rem 0.72rem;
 }
 
 .sitemap-year { margin-bottom: 2.2rem; }
