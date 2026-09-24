@@ -10,6 +10,7 @@
     "seed": "node db/seed.js",
     "wm:verify": "node tools/verify-watermark.js",
     "leather": "node tools/build-leather.js",
+    "stitch": "node tools/build-stitch.js",
     "notebook:textures": "node tools/build-notebook-textures.js"
   },
   "engines": {

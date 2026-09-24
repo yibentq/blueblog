@@ -111,6 +111,46 @@ cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm insta
 
 ---
 
+## v12 · 2026-09-24 · 任务B第一项：卡片缝线换成真圆柱截面（`docs/UNFORGEABLE_DESIGN.md` 第6节的"★工程量大"项）
+
+站长直接给了写好的 `tools/build-stitch.js`（这轮不是我从零设计的，是站长按文档第4节"皮革靠结构复杂度"
+的判断依据自己写的方案，我负责验证、修 bug、接进真实页面）。做法见脚本头部注释：不再用
+`repeating-linear-gradient` 画"一段颜色一段透明"的平面矩形，而是复用皮革同一套高度场→法线→
+漫反射+高光管线，把线当成"穿过皮革的圆柱体截面"来渲染，针脚段之间有真实的针孔凹痕，线的粗细/
+张力沿整条线连续起伏（不是逐点白噪声）。
+
+### 改了什么
+
+- 新增 `tools/build-stitch.js`、`npm run stitch`，产物 `public/img/stitch-edge-v1.png` /
+  `stitch-edge-vert-v1.png` / `stitch-edgeAlt-v1.png` / `stitch-edgeAlt-vert-v1.png`
+  （横版 54×22，竖版 22×54，透明底，横向无缝可重复）。
+- `public/css/style.css` 的 `.post-card::before, .post-article::before`：四条
+  `repeating-linear-gradient` 换成四层 `background-image`（top/bottom 用 `stitch-edge`，
+  left/right 用 `stitch-edgeAlt` 的竖版——两条边节奏刻意不同，不是同一张图四个方向复制）。
+  去掉了原来的 `filter: drop-shadow`，新贴图自己已经算好了线压进皮革的投影。移动端
+  `inset:7px` 那条改成对应的 `background-position` 偏移。
+
+### 坑
+
+- **`sharp` 的一个真实 bug**：脚本原来在同一条"raw 像素输入 → `.resize()` → `.clone().rotate(90)`"
+  的管线上直接生成竖版贴图，结果旋转会退化成 22×22 的正方形，而不是该有的 22×54——**同样的
+  `.rotate(90)`，如果先把图落地成真正的 PNG buffer、再从这个 buffer 建一个新的 `sharp` 实例去转，
+  就是对的**。以后碰到"resize 之后接 rotate 结果不对"，先怀疑是不是喂的是 raw buffer 没先落地。
+  已经在 `build-stitch.js` 里修好（`baseBuf` 那段）。
+- **视觉验证走的是真实浏览器，不是凭代码想象**：起了一个本地静态服务器 + Playwright，把真实的
+  `.post-card` 结构（含置顶书签丝带、正文、`post-meta`）套上真实 `style.css` 截图看过桌面
+  （900px）和移动端（375px，触发 `@media (max-width:640px)`）两种宽度，确认缝线在真皮革底纹上
+  的观感、置顶丝带右上角不会被边线穿过、转角处线头交叠的样子。截图没有存进仓库，只是本地验证。
+
+### 还差什么
+
+`docs/UNFORGEABLE_DESIGN.md` 第6节表格里"原创材质"这一类下，缝线只是其中一项，**网格线+针孔、
+烫金分隔线、标签pill/按钮/书签丝带/评论徽章这几项还没动**（后两者说明里写的是"复用现成系统"，
+理论上应该比缝线轻）；"原创图形"类的引用装饰引号、分页箭头（`rosette()` 派生）也都还没做。
+下一步接着按第6节的表格顺序推进。
+
+---
+
 ## v11 · 2026-09-23 · 放弃两页对开+翻页动效，改成单页"日记目录"
 
 ### 起因
