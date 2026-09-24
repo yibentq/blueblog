@@ -31,15 +31,73 @@
 .nb-page-vol { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-on-paper-dim); }
 
 .nb-page-controls { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem; }
-.nb-search, .nb-volume-select {
-  font: inherit; font-size: 0.86rem; color: var(--ink-on-paper);
-  padding: 0.45rem 0.7rem; border: 1px solid var(--paper-dim); border-radius: 3px;
+
+/* ---------- 搜索框：加一枚放大镜，和右边的自定义下拉共用同一套"纸面输入框"底 ---------- */
+.nb-search-wrap { position: relative; flex: 1; min-width: 10rem; }
+.nb-search-icon {
+  position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%);
+  color: var(--ink-on-paper-dim); opacity: 0.55; pointer-events: none;
+}
+.nb-search {
+  width: 100%; font: inherit; font-size: 0.86rem; color: var(--ink-on-paper);
+  padding: 0.45rem 0.7rem 0.45rem 2rem; border: 1px solid var(--paper-dim); border-radius: 3px;
   background: rgba(255, 255, 255, 0.4);
 }
-.nb-search { flex: 1; min-width: 10rem; }
-.nb-search:focus-visible, .nb-volume-select:focus-visible {
+.nb-search::-webkit-search-cancel-button { opacity: 0.6; }
+.nb-search:focus-visible {
   outline: 2px solid var(--brass); outline-offset: 1px;
 }
+
+/* ---------- 自定义"季度筛选"下拉——不用原生 <select>，浏览器默认菜单
+   （系统字体、方角、纯蓝选中条）跟整本"蓝图笔记本"的纸感/烫金完全是两个
+   世界，所以用 button + listbox 自己画一套，配色、字体、圆角全部对齐
+   卡片本身：奶白纸面、烫金描边、Fraunces/等宽字体。 ---------- */
+.nb-select { position: relative; }
+.nb-select-trigger {
+  display: flex; align-items: center; gap: 0.5rem; height: 100%;
+  font: inherit; font-size: 0.86rem; color: var(--ink-on-paper); white-space: nowrap;
+  padding: 0.45rem 0.7rem; border: 1px solid var(--paper-dim); border-radius: 3px;
+  background: rgba(255, 255, 255, 0.4); cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.nb-select-trigger:hover { border-color: rgba(122, 88, 42, 0.32); background: rgba(255, 255, 255, 0.55); }
+.nb-select-trigger:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.nb-select-value { font-family: var(--font-mono); letter-spacing: 0.01em; }
+.nb-select-caret {
+  color: var(--brass-dim); flex-shrink: 0; transition: transform .18s ease;
+}
+.nb-select[data-open="true"] .nb-select-caret { transform: rotate(180deg); }
+.nb-select[data-open="true"] .nb-select-trigger { border-color: var(--brass-dim); background: #fff; }
+
+.nb-select-menu {
+  position: absolute; z-index: 20; top: calc(100% + 0.4rem); right: 0; min-width: 100%;
+  list-style: none; margin: 0; padding: 0.3rem; max-height: 15rem; overflow-y: auto;
+  background: var(--paper); border: 1px solid rgba(199, 154, 69, 0.55); border-radius: 5px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 14px 28px -10px rgba(2, 10, 24, 0.45);
+  transform-origin: top right;
+  animation: nb-select-pop .14s ease-out;
+}
+@keyframes nb-select-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.nb-select-option {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-mono); font-size: 0.82rem; color: var(--ink-on-paper);
+  padding: 0.42rem 0.6rem 0.42rem 0.5rem; border-radius: 3px; cursor: pointer;
+  white-space: nowrap;
+}
+.nb-select-option + .nb-select-option { margin-top: 1px; }
+.nb-select-option:hover, .nb-select-option.is-active {
+  background: rgba(199, 154, 69, 0.16);
+}
+.nb-select-option-check {
+  width: 0.85em; flex-shrink: 0; color: var(--brass-dim); opacity: 0;
+}
+.nb-select-option[aria-selected="true"] {
+  color: var(--brass-dim); font-weight: 600;
+}
+.nb-select-option[aria-selected="true"] .nb-select-option-check { opacity: 1; }
 
 .nb-tags { display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; margin-bottom: 0.2rem; }
 .nb-tags a {
@@ -52,14 +110,30 @@
 /* ---------- 条目列表：经典"目录"排版——标题…省略号连线…日期 ---------- */
 
 .nb-entries { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--paper-dim); }
-.nb-entry { border-bottom: 1px solid var(--paper-dim); }
+.nb-entries.nb-fade-in { animation: nb-entries-in .22s ease-out; }
+@keyframes nb-entries-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.nb-entry { border-bottom: 1px solid var(--paper-dim); position: relative; }
 .nb-entry-link {
   display: flex; align-items: baseline; gap: 0.6rem;
-  padding: 0.8rem 0.1rem 0.2rem; text-decoration: none; color: inherit;
+  padding: 0.8rem 0.1rem 0.2rem 0.75rem; text-decoration: none; color: inherit;
+  transition: padding-left .15s ease;
 }
+/* 悬浮时左侧浮出一枚很细的烫金"书签"标记，呼应卡片本身的缝线配色，
+   比单纯变个文字颜色更有"翻到这一页"的实体感，但足够克制不抢戏 */
+.nb-entry-link::before {
+  content: ''; position: absolute; left: 0; top: 0.55rem; bottom: 0.55rem; width: 2px;
+  background: var(--brass); border-radius: 1px;
+  transform: scaleY(0); transform-origin: center;
+  transition: transform .15s ease;
+}
+.nb-entry-link:hover::before { transform: scaleY(1); }
+.nb-entry-link:hover { padding-left: 0.95rem; }
 .nb-entry-title {
   font-family: var(--font-display); font-size: 1.02rem; font-weight: 600;
-  color: var(--ink-on-paper); line-height: 1.35;
+  color: var(--ink-on-paper); line-height: 1.35; transition: color .15s ease;
 }
 .nb-entry-link:hover .nb-entry-title { color: var(--blue-700); }
 .nb-entry-dots {
@@ -71,7 +145,7 @@
   white-space: nowrap;
 }
 .nb-entry-excerpt {
-  margin: 0 0 0.85rem; padding: 0 0.1rem; font-size: 0.85rem;
+  margin: 0 0 0.85rem; padding: 0 0.1rem 0 0.75rem; font-size: 0.85rem;
   color: var(--ink-on-paper-dim); line-height: 1.55;
 }
 

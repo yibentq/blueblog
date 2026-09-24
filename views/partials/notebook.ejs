@@ -14,8 +14,23 @@
       <span id="nb-vol" class="nb-page-vol"></span>
     </div>
     <div class="nb-page-controls">
-      <input id="nb-search" class="nb-search" type="search" placeholder="搜索文章…" autocomplete="off">
-      <select id="nb-volume-select" class="nb-volume-select" aria-label="按季度筛选"></select>
+      <div class="nb-search-wrap">
+        <svg class="nb-search-icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M9.6 9.6 13 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <input id="nb-search" class="nb-search" type="search" placeholder="搜索文章…" autocomplete="off">
+      </div>
+      <div id="nb-volume-select" class="nb-select">
+        <button type="button" id="nb-volume-trigger" class="nb-select-trigger"
+                aria-haspopup="listbox" aria-expanded="false" aria-label="按季度筛选">
+          <span id="nb-volume-value" class="nb-select-value">加载中…</span>
+          <svg class="nb-select-caret" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
+            <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <ul id="nb-volume-menu" class="nb-select-menu" role="listbox" tabindex="-1" hidden></ul>
+      </div>
     </div>
     <div id="nb-tags" class="nb-tags"></div>
   </header>
