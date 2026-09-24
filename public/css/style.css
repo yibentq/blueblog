@@ -128,8 +128,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .titleblock::after {
   content: '';
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
-  background: linear-gradient(90deg, var(--brass) 0%, rgba(199, 154, 69, 0) 18%);
+  /* 烫金：贴图来自 tools/build-foil.js（凹槽高度场 + 拉丝金属反光 + 转印渐薄漏烫），
+     渐隐不是渐变到透明，是箔片覆盖率逐渐下降。图高 10px，压在标题栏下沿那条 1px 线上居中。 */
+  position: absolute; left: 0; bottom: -6px; height: 10px;
+  width: clamp(220px, 26vw, 520px);
+  background: url('/img/foil-line-v1.png') left center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 .titleblock-inner {
   max-width: var(--max-w);
@@ -323,9 +327,11 @@ main {
 }
 .post-article header.article-head::after {
   content: '';
-  position: absolute; left: 0; bottom: 0;
-  width: 72px; height: 3px;
-  background: linear-gradient(90deg, var(--brass), rgba(199, 154, 69, 0));
+  /* 烫金短横：foil-bar 图高 12px，原来 3px 的短横居中在 header 底沿之上 1.5px 处 */
+  position: absolute; left: 0; bottom: -4.5px;
+  width: 96px; height: 12px;
+  background: url('/img/foil-bar-v1.png') left center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 .post-article header.article-head h1 {
   font-family: var(--font-display); font-size: 1.95rem; font-weight: 600; line-height: 1.26; margin: 0 0 0.75rem;
@@ -450,8 +456,10 @@ main {
 footer { position: relative; flex-shrink: 0; border-top: 1px solid var(--line-white-dim); padding: 2rem 1.5rem; margin-top: 3rem; }
 footer::before {
   content: '';
-  position: absolute; left: 0; right: 0; top: -1px; height: 1px;
-  background: linear-gradient(90deg, var(--brass) 0%, rgba(199, 154, 69, 0) 18%);
+  position: absolute; left: 0; top: -6px; height: 10px;
+  width: clamp(220px, 26vw, 520px);
+  background: url('/img/foil-line-v1.png') left center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 footer .footer-inner {
   max-width: var(--max-w); margin: 0 auto; font-family: var(--font-mono); font-size: 0.75rem;
