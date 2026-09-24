@@ -19,6 +19,9 @@
  *   public/img/ink-rule-brass-v1.png  细线，预先染成黄铜色（表格上下沿/表头下沿，table 不能挂伪元素）
  *   public/img/ink-rule-faint-v1.png  同上但浅（表格行间）
  *   public/img/ink-bar-v1.png         竖向粗线（提示框左侧色带）——mask，宽 8px、高 560px 周期
+ *   public/img/ink-rule-light-v1.png / ink-rule-lightfaint-v1.png
+ *                                     白墨线（靛蓝皮上的分隔：评论、站点地图）——蓝图本来就是蓝底白线
+ *   public/img/ink-ruled-v1.png       560×28 的横格纸一行（评论框的稿纸线，行高 28px）
  *
  * 用法：node tools/build-ink.js            重新生成
  *       node tools/build-ink.js --preview  另存放大预览到 /tmp（米黄底）
@@ -78,11 +81,12 @@ function paperTooth(seed, cell) {
  * opt.seed    纸纤维种子
  */
 function renderRule(opt) {
-  const W = T * S, HH = H * S;
+  const TH = opt.h || H;                      // 瓦片厚度（默认 8px；稿纸行用 28px）
+  const W = T * S, HH = TH * S;
   const tooth = paperTooth(opt.seed, 1.6);
   const tooth2 = paperTooth(opt.seed + 77, 5.5);   // 更大尺度的纸浆不匀
   const cov = new Float32Array(W * HH);
-  const cyBase = H / 2;
+  const cyBase = opt.cy != null ? opt.cy : TH / 2;
   const P1 = opt.seed % 7, P2 = opt.seed % 11; // 压力曲线相位（由种子决定，不逐点随机）
   const press = (x) => {
     const t = (x / T) * TAU;
@@ -128,8 +132,8 @@ function renderRule(opt) {
     }
   }
   // 缩回 1x（盒式平均）
-  const out = new Float32Array(T * H);
-  for (let y = 0; y < H; y++) for (let x = 0; x < T; x++) {
+  const out = new Float32Array(T * TH);
+  for (let y = 0; y < TH; y++) for (let x = 0; x < T; x++) {
     let s = 0;
     for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) s += cov[(y * S + j) * W + x * S + i];
     out[y * T + x] = s / (S * S);
@@ -164,6 +168,15 @@ async function main() {
   const barPng = await sharp(toRGBA(bar, T, H, [22, 35, 58]), { raw: { width: T, height: H, channels: 4 } })
     .rotate(90).png().toBuffer();
   files['ink-bar-v1.png'] = { png: barPng };
+
+  // 白墨线：同一把尺子，换个位置压；颜色是蓝图的白线
+  const light = renderRule({ hw: 0.6, shift: 141, pins: false, seed: 4104 });
+  files['ink-rule-light-v1.png'] = { w: T, h: H, buf: toRGBA(light, T, H, [234, 240, 248], 0.62) };
+  files['ink-rule-lightfaint-v1.png'] = { w: T, h: H, buf: toRGBA(light, T, H, [234, 240, 248], 0.26) };
+
+  // 稿纸行：28px 一行，线压在行底（y=24），用于评论框的横格
+  const ruled = renderRule({ hw: 0.5, shift: 19, pins: false, seed: 4105, h: 28, cy: 24 });
+  files['ink-ruled-v1.png'] = { w: T, h: 28, buf: toRGBA(ruled, T, 28, [156, 122, 56], 0.5) };
 
   for (const [name, f] of Object.entries(files)) {
     const png = f.png || (await sharp(f.buf, { raw: { width: f.w, height: f.h, channels: 4 } }).png().toBuffer());
