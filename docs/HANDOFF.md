@@ -38,6 +38,9 @@
   **这份比 CYANOTYPE_REDESIGN.md 更新，下一个接手者先读这份**。还没有定案，下一步做什么见该文档第 5 节。
 
 - 最近几轮改动记录：
+  - **v29** 补上另一条老待办"代码块语法高亮"：新增 `highlight.js` 依赖，服务端渲染时
+    生成 token，配色不用现成主题、自己按站内配色变量分类（见下方 v29 节）——**还未部署，
+    且部署后要跑 `tools/rerender-posts.js --apply` 老文章才会补上高亮**
   - **v28** 补上一直挂着的待办"文章目录 TOC"：从 content_html 摘取已有的 h2/h3
     锚点，标题够多（≥2）才显示，排版复用首页目录同一套点线视觉语言（见下方 v28 节）
     ——**还未部署**
@@ -130,6 +133,62 @@ cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm insta
 - 水印：老图不补新水印；没有"原图存一份、对外给带水印版"；签名无中文版/单色印刷版（v2）
 - 后台目前是纯色 UI（没上皮革质感，后台优先好用）；旧视图里失效的行内 style 可以顺手清理
 - 站长确认后的收尾：把"等站长确认"里的项目根据反馈更新成结论
+
+---
+
+## v29 · 2026-09-25 · 代码块语法高亮
+
+### 背景
+
+`docs/HANDOFF.md`（v1 那节"还差什么"）另一条老待办："代码块语法高亮（需要加依赖；
+现在只有 `language-xx` 的 class）"。这次一起补上。
+
+### 做了什么
+
+**1. 新增依赖 `highlight.js`（`package.json`/`package-lock.json`）**
+
+服务端渲染时直接把 token 分好类存进 `content_html`，不是前台再挂一个高亮库的
+运行时——这个站没有构建步骤、front-end 没有 JS 框架，能少一个客户端依赖就少一个，
+跟水印/皮革贴图这些"离线生成、存成静态产物"的原则是一致的。
+
+**2. `src/utils/markdown.js` 的 `code` renderer**
+
+覆盖 marked 默认的代码块渲染：语言标注了、且 `highlight.js` 认识这门语言，就用
+`hljs.highlight()` 生成带 `hljs-*` 类名的 `<span>`；没标语言、或标了一个 `highlight.js`
+不认识的语言（比如站长自己发明的伪语言名），退回纯转义文本——跟以前"没高亮"的
+行为完全一致，不报错、不留空块。`sanitize-html` 那边不用改：`span`/`class` 属性
+本来就在白名单里。
+
+**3. token 配色（`public/css/style.css`）**
+
+**不用 `highlight.js` 自带的任何一套主题**——那些是通用调色板（一大堆五颜六色的
+`atom-one-dark`/`github-dark` 之类），跟这个站的蓝图墨蓝/烫金调性是两回事，直接
+拿主题库套用本身就是这几轮一直在避免的"默认套路"。改成只用页面已有的几个变量
+重新分一遍类：关键字用烫金 `--brass`（跟缝线/强调同一个金色）、字符串用 `--blue-500`
+（专门给暗底文字用的浅蓝，标题那个深蓝 `--blue-700` 在深色代码块底上会糊掉）、
+注释用线白的暗淡版 + 斜体（像页边批注）、函数/类名保持线白但加粗，其余没特别
+分类的 token 跟随 `<pre>` 本身颜色——只分了五六类，不是逐个语法元素都上色。
+
+### 坑 / 判断依据
+
+- 老文章的 `content_html` 是保存时渲染好存进数据库的，这条规则和历次内容渲染改动
+  （相册照片、图片分段）一样：**部署后要跑一次 `node tools/rerender-posts.js --apply`**，
+  老文章的代码块才会补上高亮，不跑的话老文章还是纯文本，不会报错也不会难看，
+  只是新旧文章观感不一致。
+- 只验证了 `renderMarkdown()` 对已知语言/未知语言/无语言三种输入的直接输出（用
+  Node 脚本手工核对了 HTML 结构和转义是否正确），`node --check` 过了语法，CSS
+  括号配对也核对过。**没有跑真实浏览器**看高亮后的实际配色是否顺眼——这一条比
+  之前几轮的"没截图"更需要站长实际看一眼，因为配色是不是"顺眼"这件事本来就
+  没法靠静态推理判断对不对。
+
+### 部署
+
+```bash
+cd /var/www/blog-blue && sudo -u blogblue git pull && sudo -u blogblue npm install && sudo -u blogblue pm2 restart blog-blue
+sudo -u blogblue node tools/rerender-posts.js --apply   # 老文章代码块补高亮
+```
+
+新增了一个依赖（`highlight.js`），这次要 `npm install`；没有数据库迁移。
 
 ---
 
@@ -1230,7 +1289,7 @@ git pull && npm install && pm2 restart blog-blue
 ### 还差什么（没做）
 
 - 文章修订历史（每次保存留一份，能回滚）——需要新表 + 迁移，这次没动 schema
-- 代码块语法高亮（需要加依赖；现在只有 `language-xx` 的 class）
+- ~~代码块语法高亮（需要加依赖；现在只有 `language-xx` 的 class）~~ **v29 已做**
 - ~~文章目录（TOC）——锚点 id 已经有了，只差前台渲染~~ **v28 已做**
 - 皮革底纹目前只有前台；后台 UI 仍是纯色（后台追求好用，没上质感）
 

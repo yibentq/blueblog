@@ -1,5 +1,6 @@
 const { marked } = require('marked');
 const sanitizeHtml = require('sanitize-html');
+const hljs = require('highlight.js');
 
 // marked 只负责“文本转结构”，绝不相信它输出的 HTML 是安全的——
 // 任何允许用户（哪怕只有站长自己）写 Markdown 的系统，都必须在存库前净化一次。
@@ -66,6 +67,25 @@ marked.use({
       const cls = kind === 'WARNING' ? 'warn' : kind.toLowerCase();
       const body = quote.replace(m[0], '<p>').replace(/<p>\s*<\/p>\n?/, '');
       return `<aside class="callout callout-${cls}"><p class="callout-title">${CALLOUTS[kind]}</p>${body}</aside>\n`;
+    },
+    // 代码块语法高亮：服务端渲染时用 highlight.js 直接把 token 分好类，
+    // 不是前台再挂一个高亮库的运行时（这个站没有构建步骤，能少一个客户端依赖就少一个）。
+    // 写没标语言、或标了 highlight.js 不认识的语言，退回纯转义文本——不报错、不留空块，
+    // 跟以前"没高亮"时的行为一致，只是现在认识的语言会真的上色。
+    // 配色不用 highlight.js 自带的任何一套主题（那些是通用配色，跟这个站的蓝图墨蓝/
+    // 烫金调性是两回事），token 颜色在 style.css 里按 hljs-* 类名自己定义。
+    code(code, infostring) {
+      const lang = (infostring || '').match(/^\S*/)?.[0] || '';
+      const text = code.replace(/\n$/, '');
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          const { value } = hljs.highlight(text, { language: lang, ignoreIllegals: true });
+          return `<pre><code class="language-${lang} hljs">${value}\n</code></pre>\n`;
+        } catch (e) { /* 高亮失败就走下面的纯文本兜底 */ }
+      }
+      const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cls = lang ? ` class="language-${lang}"` : '';
+      return `<pre><code${cls}>${escaped}\n</code></pre>\n`;
     },
   },
 });

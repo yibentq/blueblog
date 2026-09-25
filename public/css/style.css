@@ -500,6 +500,19 @@ main {
   background: none; padding: 0; margin: 0; color: inherit; border: 0; white-space: inherit;
 }
 .article-body pre code::before, .article-body pre code::after { content: none; }
+/* 语法高亮 token 配色：不用 highlight.js 自带的任何一套主题（那些是通用调色板，
+   跟这个站的蓝图墨蓝/烫金完全是两个色系），直接用页面已有的几个变量重新分一遍类——
+   关键字用烫金（跟缝线/强调同一个金色），字符串用 --blue-500（专门给暗底文字用的
+   那个浅蓝，不是标题用的深蓝 --blue-700，深蓝在深色代码块底上会糊掉），注释用线白
+   的暗淡版 + 斜体（像页边批注），函数/类名保持线白但加粗，其余没特别分类的 token
+   跟随 <pre> 本身的颜色，不需要每一种语法元素都单独配色。 */
+.hljs-keyword, .hljs-built_in, .hljs-type, .hljs-literal { color: var(--brass); }
+.hljs-string, .hljs-attr, .hljs-symbol, .hljs-regexp { color: var(--blue-500); }
+.hljs-comment, .hljs-quote { color: var(--line-white-dim); font-style: italic; }
+.hljs-number { color: var(--brass-dim); }
+.hljs-title, .hljs-title.function_, .hljs-title.class_ { color: var(--line-white); font-weight: 600; }
+.hljs-deletion { color: var(--danger); }
+.hljs-addition { color: var(--blue-500); }
 .article-body ul, .article-body ol { margin: 0 0 1.1rem; padding-left: 1.4rem; }
 /* 墨线（hr / 表格线 / 提示框色带）：同一把尺子在纸上拖出来的墨，见 tools/build-ink.js。
    hr 与色带的图只是形状（alpha），颜色由 background 决定，用 mask 套出来；表格不能挂伪元素，用预染色的瓦片。 */
