@@ -170,7 +170,10 @@
 .nb-pagination { margin-top: 1.1rem; }
 .nb-pagination a { color: var(--blue-700); }
 .nb-pagination a:hover { color: var(--brass-dim); }
-.nb-pagination a.disabled { pointer-events: none; color: rgba(22, 35, 58, 0.28); }
+/* 之前用文字变浅模拟禁用态，箭头图形是固定颜色的 SVG（paginationArrow() 渲染时写死了
+   stroke/fill），文字变浅时箭头不会跟着变浅——两者本该是一体。改成对整个 <a> 调
+   opacity，箭头和文字一起变淡，跟 index.ejs 那份服务端分页两种透明度 SVG 效果一致。 */
+.nb-pagination a.disabled { pointer-events: none; opacity: 0.35; }
 .nb-pagination span { color: var(--ink-on-paper-dim); }
 
 @media (max-width: 640px) {

@@ -40,10 +40,18 @@
   <p id="nb-empty" class="nb-empty" hidden>没有找到相关文章。</p>
   <p id="nb-error" class="nb-empty nb-error" hidden></p>
 
+  <%
+  // 翻页箭头用跟 index.ejs 那份服务端分页同一个 paginationArrow()（brand.js 里
+  // rosette() 派生的指针图形），之前这里是漏网的 &larr;/&rarr; 字符实体——同一个
+  //概念在两处一个已经是签名同源的原创图形、一个还是零设计的默认写法，是本轮盘点
+  // 才发现的不一致（docs/HANDOFF.md v27）。这里翻上/翻下是 JS 切一个 .disabled
+  // class（见 notebook.js），不是像 index.ejs 那样服务端直接输出两种不同透明度的
+  // SVG，所以透明度改由 CSS 在 .disabled 状态整体调（notebook.css）。
+  %>
   <nav id="nb-pagination" class="pagination nb-pagination" hidden>
-    <a href="#" id="nb-prev">&larr; 上一页</a>
+    <a href="#" id="nb-prev"><%- paginationArrow('prev') %> 上一页</a>
     <span id="nb-page-no"></span>
-    <a href="#" id="nb-next">下一页 &rarr;</a>
+    <a href="#" id="nb-next">下一页 <%- paginationArrow('next') %></a>
   </nav>
 </section>
 
