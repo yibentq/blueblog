@@ -284,33 +284,33 @@ main {
    缝线是 tools/build-stitch.js 同一批贴图缩到 0.55 倍，线的粗细也相应变细，不是另画一套。
    文字是"压进皮里"（盲压）而不是"印在皮上"：靛蓝皮上字带一线暗上沿，小牛皮上带一线亮下沿，
    跟标题的 letterpress 同一个逻辑。 */
-.article-tags a, .btn, .comment-author-badge, .tag-index-item .tag-count {
+.article-tags a, .nb-tags a, .btn, .comment-author-badge, .tag-index-item .tag-count {
   --st: 4px;   /* 缝线距边 */
   position: relative; isolation: isolate; display: inline-block; border-radius: 3px;
   line-height: 1.5; text-decoration: none; overflow: hidden;
 }
-.article-tags a::before, .btn::before, .comment-author-badge::before, .tag-index-item .tag-count::before,
-.article-tags a::after, .btn::after, .comment-author-badge::after, .tag-index-item .tag-count::after {
+.article-tags a::before, .nb-tags a::before, .btn::before, .comment-author-badge::before, .tag-index-item .tag-count::before,
+.article-tags a::after, .nb-tags a::after, .btn::after, .comment-author-badge::after, .tag-index-item .tag-count::after {
   content: ''; position: absolute; z-index: -1; pointer-events: none; opacity: 0.95;
 }
 /* 横边和竖边分给两个伪元素，各自在两头让出一个线径的位置——
    缝线在角上是"转弯"，不是横竖两条线叠在一起挤成一坨。 */
-.article-tags a::before, .btn::before, .comment-author-badge::before, .tag-index-item .tag-count::before {
+.article-tags a::before, .nb-tags a::before, .btn::before, .comment-author-badge::before, .tag-index-item .tag-count::before {
   inset: 0 calc(var(--st) + 3px);
   background:
     url('/img/stitch-edge-v1.png') repeat-x left 0 top calc(var(--st) - 6px)    / 30px 12px,
     url('/img/stitch-edge-v1.png') repeat-x left 0 bottom calc(var(--st) - 6px) / 30px 12px;
 }
-.article-tags a::after, .btn::after, .comment-author-badge::after, .tag-index-item .tag-count::after {
+.article-tags a::after, .nb-tags a::after, .btn::after, .comment-author-badge::after, .tag-index-item .tag-count::after {
   inset: calc(var(--st) + 3px) 0;
   background:
     url('/img/stitch-edgeAlt-vert-v1.png') repeat-y left calc(var(--st) - 6px) top 0  / 12px 30px,
     url('/img/stitch-edgeAlt-vert-v1.png') repeat-y right calc(var(--st) - 6px) top 0 / 12px 30px;
 }
-.comment-author-badge, .tag-index-item .tag-count { --st: 3.5px; }
+.nb-tags a, .comment-author-badge, .tag-index-item .tag-count { --st: 3.5px; }
 
 /* 靛蓝皮（用在米黄卡片上） */
-.article-tags a {
+.article-tags a, .nb-tags a {
   background-color: var(--blue-900); background-image: var(--leather-navy); background-size: 384px 384px;
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.55);
   box-shadow: inset 0 1px 0 rgba(150, 190, 240, 0.3), inset 0 -1px 0 rgba(2, 9, 20, 0.55), 0 1px 1px rgba(74, 46, 10, 0.4);
@@ -321,12 +321,12 @@ main {
   color: var(--ink-on-paper); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -1px 0 rgba(96, 64, 26, 0.35), 0 1px 2px rgba(2, 9, 20, 0.55);
 }
-.article-tags a:hover, .btn:hover { filter: brightness(1.1); }
+.article-tags a:hover, .nb-tags a:hover, .btn:hover { filter: brightness(1.1); }
 @media (prefers-reduced-motion: no-preference) {
-  .article-tags a, .btn { transition: filter .15s ease, transform .1s ease; }
+  .article-tags a, .nb-tags a, .btn { transition: filter .15s ease, transform .1s ease; }
 }
 .btn:active { transform: translateY(1px); box-shadow: inset 0 1px 3px rgba(96, 64, 26, 0.45), 0 0 0 rgba(0, 0, 0, 0); }
-.article-tags a:hover { color: var(--brass); }
+.article-tags a:hover, .nb-tags a:hover { color: var(--brass); }
 
 .post-card h2 { margin: 0 0 0.5rem; font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; line-height: 1.3; }
 .post-card h2 a { color: var(--ink-on-paper); text-decoration: none; }
@@ -445,9 +445,20 @@ main {
   background: url('/img/quote-mark-v1.svg') left top / contain no-repeat;
   opacity: 0.55;
 }
+/* 行内代码：之前是纯色圆角块（GitHub 风格），是这批材质里最赤裸的默认套路——
+   跟 blockquote/hr 那套"手描墨线"完全是两个语言。体量太小不值得单独建一套材质
+   系统（跟高亮 mark 同样的判断，见 docs/UNFORGEABLE_DESIGN.md 第6节），换的是
+   隐喻本身：不做"贴片"，做"图纸标注"——蓝图上圈一个数值会用尖角括号标出，
+   不是拿橡皮图章盖一个圆角框。颜色换成蓝图墨蓝（不是中性底色），
+   两侧尖角括号是画出来的（border，不是字体自带的方括号字符）。 */
 .article-body code {
-  font-family: var(--font-mono); font-size: 0.88em; background: var(--paper-dim); padding: 0.15em 0.35em; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 0.85em; color: var(--blue-700);
+  padding: 0.02em 0.3em; margin: 0 0.05em; white-space: nowrap;
+  border-top: 1px solid rgba(29, 78, 137, 0.4); border-bottom: 1px solid rgba(29, 78, 137, 0.4);
 }
+.article-body code::before, .article-body code::after { color: var(--brass-dim); }
+.article-body code::before { content: '\2039'; margin-right: 0.15em; }
+.article-body code::after { content: '\203A'; margin-left: 0.15em; }
 .article-body pre {
   /* 深色皮革"嵌片"：像卡片上嵌了一块靛蓝小牛皮，凹进去的（内阴影在上、亮边在下） */
   background-color: var(--ink);
@@ -457,7 +468,10 @@ main {
   overflow-x: auto; font-size: 0.86rem; line-height: 1.55;
   box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.55);
 }
-.article-body pre code { background: none; padding: 0; color: inherit; }
+.article-body pre code {
+  background: none; padding: 0; margin: 0; color: inherit; border: 0; white-space: inherit;
+}
+.article-body pre code::before, .article-body pre code::after { content: none; }
 .article-body ul, .article-body ol { margin: 0 0 1.1rem; padding-left: 1.4rem; }
 /* 墨线（hr / 表格线 / 提示框色带）：同一把尺子在纸上拖出来的墨，见 tools/build-ink.js。
    hr 与色带的图只是形状（alpha），颜色由 background 决定，用 mask 套出来；表格不能挂伪元素，用预染色的瓦片。 */

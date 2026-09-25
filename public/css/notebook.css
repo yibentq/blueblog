@@ -32,42 +32,54 @@
 
 .nb-page-controls { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem; }
 
-/* ---------- 搜索框：加一枚放大镜，和右边的自定义下拉共用同一套"纸面输入框"底 ---------- */
+/* ---------- 搜索框 + 季度筛选：不是"表单控件"，是纸上两条书写线 ----------
+   之前这两个是描边矩形 + border-radius，跟卡片本身的纸/皮质感是两回事——
+   它们坐在米黄卡片*内部*（不像评论框坐在靛蓝桌面上），所以不需要评论输入框
+   那种"纸片嵌进皮里"的盒子感，反而该是"直接写在这张纸上"：去掉边框和背景色块，
+   底下压一条墨线（跟评论框输入行、hr、表格用同一批 ink-rule 贴图），
+   聚焦/悬浮时墨线换成烫金版，呼应标题下的那道金线。 */
 .nb-search-wrap { position: relative; flex: 1; min-width: 10rem; }
 .nb-search-icon {
-  position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%);
+  position: absolute; left: 0.15rem; top: 50%; transform: translateY(-50%);
   color: var(--ink-on-paper-dim); opacity: 0.55; pointer-events: none;
 }
 .nb-search {
   width: 100%; font: inherit; font-size: 0.86rem; color: var(--ink-on-paper);
-  padding: 0.45rem 0.7rem 0.45rem 2rem; border: 1px solid var(--paper-dim); border-radius: 3px;
-  background: rgba(255, 255, 255, 0.4);
+  padding: 0.4rem 0.4rem 0.5rem 1.5rem; border: 0; border-radius: 0; background: transparent;
+  background-image: url('/img/ink-rule-faint-v1.png'); background-repeat: repeat-x;
+  background-size: 420px 8px; background-position: 0 calc(100% - 1px);
 }
 .nb-search::-webkit-search-cancel-button { opacity: 0.6; }
+.nb-search:hover { background-image: url('/img/ink-rule-light-v1.png'); }
 .nb-search:focus-visible {
-  outline: 2px solid var(--brass); outline-offset: 1px;
+  outline: 0; background-image: url('/img/ink-rule-brass-v1.png');
 }
 
 /* ---------- 自定义"季度筛选"下拉——不用原生 <select>，浏览器默认菜单
    （系统字体、方角、纯蓝选中条）跟整本"蓝图笔记本"的纸感/烫金完全是两个
-   世界，所以用 button + listbox 自己画一套，配色、字体、圆角全部对齐
-   卡片本身：奶白纸面、烫金描边、Fraunces/等宽字体。 ---------- */
+   世界，所以用 button + listbox 自己画一套。收起态的触发器现在跟搜索框
+   同一条墨线逻辑；展开的菜单本身是要"浮起来"的临时物件，保留卡片感
+   （奶白纸面、烫金描边）没有改——那是浮层该有的样子，跟贴片/书写线是
+   两类不同的物件，不用勉强套同一套材质。 ---------- */
 .nb-select { position: relative; }
 .nb-select-trigger {
   display: flex; align-items: center; gap: 0.5rem; height: 100%;
   font: inherit; font-size: 0.86rem; color: var(--ink-on-paper); white-space: nowrap;
-  padding: 0.45rem 0.7rem; border: 1px solid var(--paper-dim); border-radius: 3px;
-  background: rgba(255, 255, 255, 0.4); cursor: pointer;
-  transition: border-color .15s ease, background .15s ease;
+  padding: 0.4rem 0.3rem 0.5rem 0.2rem; border: 0; border-radius: 0; background: transparent;
+  background-image: url('/img/ink-rule-faint-v1.png'); background-repeat: repeat-x;
+  background-size: 260px 8px; background-position: 0 calc(100% - 1px);
+  cursor: pointer; transition: background-image .1s ease;
 }
-.nb-select-trigger:hover { border-color: rgba(122, 88, 42, 0.32); background: rgba(255, 255, 255, 0.55); }
-.nb-select-trigger:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.nb-select-trigger:hover { background-image: url('/img/ink-rule-light-v1.png'); }
+.nb-select-trigger:focus-visible { outline: 0; }
 .nb-select-value { font-family: var(--font-mono); letter-spacing: 0.01em; }
 .nb-select-caret {
   color: var(--brass-dim); flex-shrink: 0; transition: transform .18s ease;
 }
 .nb-select[data-open="true"] .nb-select-caret { transform: rotate(180deg); }
-.nb-select[data-open="true"] .nb-select-trigger { border-color: var(--brass-dim); background: #fff; }
+.nb-select[data-open="true"] .nb-select-trigger, .nb-select-trigger:focus-visible {
+  background-image: url('/img/ink-rule-brass-v1.png');
+}
 
 .nb-select-menu {
   position: absolute; z-index: 20; top: calc(100% + 0.4rem); right: 0; min-width: 100%;
@@ -99,13 +111,14 @@
 }
 .nb-select-option[aria-selected="true"] .nb-select-option-check { opacity: 1; }
 
+/* 标签云：跟文章页 .article-tags 同一批"缝边皮革贴片"（style.css），
+   不是这里单独一套描边药丸——之前两处标签质感不统一，一处是皮，一处是纯 CSS 药丸。
+   贴片本身（材质/缝线/盲压字）在 style.css 共用规则里，这里只定小尺寸下的字号/间距。 */
 .nb-tags { display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; margin-bottom: 0.2rem; }
 .nb-tags a {
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--blue-700);
-  text-decoration: none; padding: 0.16rem 0.55rem;
-  border: 1px solid rgba(29, 78, 137, 0.32); border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.68rem; color: var(--line-white);
+  padding: 0.22rem 0.7rem;
 }
-.nb-tags a:hover { color: var(--brass-dim); border-color: rgba(199, 154, 69, 0.55); }
 
 /* ---------- 条目列表：经典"目录"排版——标题…省略号连线…日期 ---------- */
 
