@@ -13,6 +13,27 @@
           <span><%= post.view_count %> 次浏览</span>
         </div>
       </header>
+      <% if (toc.length) { %>
+        <%
+        // 目录用的还是首页目录同一套"标题…省略号…定位"的排版语言（.nb-entry-dots 那条
+        // 点线），不是另发明一套目录样式——同一个"目录"概念，只是这里指向的是页内锚点，
+        // 不是文章链接。h3 缩进一级表示层级，锚点 id 是 renderMarkdown 生成时已经写进
+        // content_html 的那份，这里只是摘出来重新排一遍，不会跟正文的锚点错位。
+        %>
+        <nav class="article-toc" aria-label="文章目录">
+          <p class="article-toc-title">目录</p>
+          <ol>
+            <% toc.forEach(function(item) { %>
+              <li class="toc-h<%= item.level %>">
+                <a href="#<%= item.id %>">
+                  <span class="toc-label"><%= item.text %></span>
+                  <span class="toc-dots" aria-hidden="true"></span>
+                </a>
+              </li>
+            <% }) %>
+          </ol>
+        </nav>
+      <% } %>
       <div class="article-body"><%- post.content_html %></div>
       <% if (tags.length) { %>
         <div class="article-tags">

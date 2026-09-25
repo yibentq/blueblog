@@ -135,4 +135,19 @@ function estimateReadingMinutes(md) {
   return minutes;
 }
 
-module.exports = { renderMarkdown, estimateReadingMinutes };
+// 从渲染好的 content_html 里摘出 h2/h3 锚点，给文章页拼一份目录。
+// 不是重新分析 Markdown——锚点 id 已经在 renderMarkdown 里生成过一次并存进了数据库，
+// 这里只是把同一份 HTML 里已经有的 id 摘出来，不会跟正文的锚点错位。
+// 标题里可能带行内标记（如 <code>、<mark>），目录只要纯文本，简单剥掉标签即可。
+function extractToc(html) {
+  const re = /<h([23])\sid="([^"]*)">([\s\S]*?)<\/h\1>/g;
+  const toc = [];
+  let m;
+  while ((m = re.exec(String(html || '')))) {
+    const text = m[3].replace(/<[^>]+>/g, '').trim();
+    if (text) toc.push({ level: Number(m[1]), id: m[2], text });
+  }
+  return toc;
+}
+
+module.exports = { renderMarkdown, estimateReadingMinutes, extractToc };

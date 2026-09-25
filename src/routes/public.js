@@ -5,6 +5,7 @@ const postModel = require('../models/post');
 const tagModel = require('../models/tag');
 const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
+const { extractToc } = require('../utils/markdown');
 
 function siteUrl() {
   return (process.env.SITE_URL || '').replace(/\/$/, '');
@@ -69,8 +70,12 @@ router.get('/p/:slug', async (req, res, next) => {
         ? commentModel.listApprovedForPost(post.id).then((rows) => commentModel.threadOrder(rows))
         : [],
     ]);
+    // 目录只在标题够多时才有意义，太少（0/1 个）摆一个目录框反而是噪音；
+    // 阈值 2 是"够不够撑起一份目录"的最低线，不是任何精确调研出来的数字
+    const toc = extractToc(post.content_html);
     res.render('post', {
       post, tags, comments, query: req.query,
+      toc: toc.length >= 2 ? toc : [],
       commentsEnabled: settings.comments_enabled === 'true',
       pageTitle: post.seo_title || post.title,
       pageDescription: post.seo_description || post.summary,

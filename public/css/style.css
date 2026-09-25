@@ -397,6 +397,34 @@ main {
 }
 .article-meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-on-paper-dim); display: flex; flex-wrap: wrap; gap: 1rem; }
 
+/* 文章目录：跟首页目录同一套"标题…省略号…定位"排版（.nb-entry-dots，见 notebook.css），
+   只是这里的省略号连线指向页内锚点而不是文章链接——同一个"目录"视觉语言的延伸，
+   不是另立一套目录样式。上下两条墨线复用 hr 同一批 ink-rule 贴图（tools/build-ink.js）。 */
+.article-toc {
+  margin: 0 0 1.8rem; padding: 0.9rem 0.2rem 0.5rem;
+  background:
+    url('/img/ink-rule-faint-v1.png') 0 0 / 560px 8px repeat-x,
+    url('/img/ink-rule-faint-v1.png') 0 100% / 560px 8px repeat-x;
+}
+.article-toc-title {
+  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em;
+  color: var(--ink-on-paper-dim); margin: 0.3rem 0 0.5rem;
+}
+.article-toc ol { list-style: none; margin: 0; padding: 0; }
+.article-toc li.toc-h3 { padding-left: 1.2rem; }
+.article-toc a {
+  display: flex; align-items: baseline; gap: 0.5rem; padding: 0.28rem 0;
+  text-decoration: none; color: var(--ink-on-paper);
+}
+.toc-h3 .toc-label { font-size: 0.86rem; }
+.article-toc a:hover .toc-label { color: var(--blue-700); }
+.article-toc a:hover .toc-dots { opacity: 0.75; }
+.toc-dots {
+  flex: 1; min-width: 1rem; align-self: center;
+  border-bottom: 1px dotted var(--ink-on-paper-dim); opacity: 0.4;
+  transition: opacity .15s ease;
+}
+
 .article-body { font-size: 1.06rem; }
 .article-body h2 { font-family: var(--font-display); font-size: 1.35rem; margin: 2rem 0 0.8rem; }
 .article-body h3 { font-family: var(--font-display); font-size: 1.12rem; margin: 1.6rem 0 0.6rem; }
