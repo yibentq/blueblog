@@ -43,9 +43,11 @@ with sync_playwright() as p:
     adm=b.new_context(viewport={'width':1300,'height':900}).new_page(); adm.on('pageerror',lambda e:errs.append('admin:'+str(e))); login(adm)
     adm.goto('http://127.0.0.1:3999/admin/comments'); adm.wait_for_timeout(700)
     body=adm.inner_text('body'); chk('后台评论页看到待审核评论', '审计员' in body, True)
-    btn=adm.locator('button:has-text("通过")'); print('   通过 buttons:', btn.count())
-    if btn.count():
-        btn.first.click(); adm.wait_for_timeout(1000)
+    # 用该评论卡片自己的「通过」按钮（data-act="approve"），不要用全局的 button:has-text("通过")——
+    # 页面上还有一个批量操作栏的「通过」按钮，没勾选任何行时它是隐藏的，误命中会一直等到超时。
+    card = adm.locator('.cc-body').filter(has_text='审计员').first
+    if card.count():
+        card.locator('[data-act="approve"]').click(); adm.wait_for_timeout(1000)
     pg.goto('http://127.0.0.1:3999/p/t0'); txt=pg.locator('.comments').inner_text(); chk('通过后前台可见', '这是审计写的评论' in txt, True)
     chk('评论里的 HTML 被转义（不执行）', pg.locator('.comments b').count(), 0)
     print('   .comment newline preserved?', pg.locator('.comment p').nth(1).inner_html()[:80] if pg.locator('.comment p').count()>1 else '')

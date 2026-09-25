@@ -543,6 +543,27 @@ main {
 .comment > p:not(.comment-meta) { white-space: pre-line; overflow-wrap: anywhere; }
 .comment:target { background-color: rgba(199, 154, 69, 0.1); border-radius: 3px; }
 .comment.reply { margin-left: 1.6rem; padding-left: 1rem; border-left: 2px solid rgba(199, 154, 69, 0.45); background-image: none; }
+.comment-reply-btn {
+  margin-left: 0.5rem; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.02em;
+  color: var(--brass-dim); background: none; border: 0; padding: 0; cursor: pointer;
+}
+.comment-reply-btn:hover, .comment-reply-btn:focus-visible { color: var(--brass); text-decoration: underline; }
+/* 表单被 JS 搬到某条评论下面时，靠这道墨线（同 v17 的 ink-bar）跟它要回复的那条评论对齐 */
+.comment-form { position: relative; }
+/* author CSS 的 display 会盖掉 UA 表的 [hidden]{display:none}（同 specificity，author 优先），
+   所以"隐藏"必须专门写一条，不能只靠 JS 设置 hidden 属性 */
+.comment-replying-to[hidden] { display: none; }
+/* 这条指示条挂在评论表单顶部、表单输入框之外——那一圈仍是靛蓝皮，不是米黄纸，
+   之前用了纸面配色（--ink-on-paper），字几乎融进皮里。改用 comment-meta 同款的线白配色。 */
+.comment-replying-to {
+  font-family: var(--font-mono); font-size: 0.78rem; color: var(--line-white-dim);
+  margin: 0 0 0.6rem; display: flex; align-items: center; gap: 0.6rem;
+}
+.comment-replying-to span { color: var(--line-white); font-weight: 600; }
+.comment-replying-to button {
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--brass);
+  background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+}
 .comment.by-author > p:not(.comment-meta) { color: var(--line-white); }
 .comment-author-badge {
   /* 小牛皮贴片（评论区在靛蓝底上，贴片用相反的那种皮）；小尺寸版，缝线内缩更少 */

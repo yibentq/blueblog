@@ -27,8 +27,10 @@
       <section class="comments" id="comments">
         <h2><%= comments.length %> 条评论</h2>
         <% comments.forEach(function(c) { %>
-          <div class="comment<%= c.depth ? ' reply' : '' %><%= c.is_author ? ' by-author' : '' %>" id="c-<%= c.id %>">
-            <p class="comment-meta"><%= c.author_name %><% if (c.is_author) { %> <span class="comment-author-badge">作者</span><% } %> / <%= new Date(c.created_at).toISOString().slice(0,10) %></p>
+          <div class="comment<%= c.depth ? ' reply' : '' %><%= c.is_author ? ' by-author' : '' %>" id="c-<%= c.id %>" data-comment-id="<%= c.id %>" data-author="<%= c.author_name %>">
+            <p class="comment-meta"><%= c.author_name %><% if (c.is_author) { %> <span class="comment-author-badge">作者</span><% } %> / <%= new Date(c.created_at).toISOString().slice(0,10) %>
+              <button type="button" class="comment-reply-btn" data-reply-to="<%= c.id %>" data-reply-name="<%= c.author_name %>">回复</button>
+            </p>
             <p><%= c.content %></p>
           </div>
         <% }) %>
@@ -37,13 +39,23 @@
           <p class="notice">评论已提交，审核通过后会显示在这里。</p>
         <% } %>
 
-        <form class="comment-form" method="post" action="/p/<%= post.slug %>/comments">
+        <!-- 读者回复读者：点评论上的"回复"，这个表单原地搬到那条评论下面，parent_id 跟着填上；
+             服务端（src/routes/public.js、src/models/comment.js）本来就支持 parent_id，只是前台一直没有入口。 -->
+        <form class="comment-form" id="comment-form" method="post" action="/p/<%= post.slug %>/comments">
           <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off">
+          <input type="hidden" name="parent_id" id="comment-parent-id" value="">
+          <p class="comment-replying-to" id="comment-replying-to" hidden>
+            回复 <span id="comment-replying-name"></span>
+            <button type="button" id="comment-reply-cancel">取消</button>
+          </p>
           <input type="text" name="author_name" placeholder="昵称" required maxlength="80">
           <input type="email" name="author_email" placeholder="邮箱（可选，不会公开）" maxlength="255">
-          <textarea name="content" rows="4" placeholder="说点什么" required maxlength="2000"></textarea>
+          <textarea name="content" id="comment-content" rows="4" placeholder="说点什么" required maxlength="2000"></textarea>
           <button class="btn" type="submit">发送评论</button>
         </form>
+        <% if (comments.length) { %>
+          <script nonce="<%= cspNonce %>" src="/js/comment-reply.js?v=<%= assetVersion %>" defer></script>
+        <% } %>
       </section>
     <% } %>
   </main>
