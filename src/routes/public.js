@@ -7,6 +7,7 @@ const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
 const { extractToc } = require('../utils/markdown');
 const { enhanceHtml } = require('../utils/enhance');
+const datefmt = require('../utils/datefmt');
 
 function siteUrl() {
   return (process.env.SITE_URL || '').replace(/\/$/, '');
@@ -148,6 +149,7 @@ router.get('/api/notebook/toc', async (req, res, next) => {
         title: p.title,
         excerpt: p.summary,
         date: p.published_at,
+        dateText: datefmt.dot(p.published_at), // 按站点时区格式化好的日期，前端直接显示，不在浏览器里再算一遍
       })),
     });
   } catch (err) { next(err); }
@@ -170,7 +172,7 @@ router.get('/api/notebook/search', async (req, res, next) => {
     res.json({
       q,
       results: rows.map((p) => ({
-        slug: p.slug, title: p.title, excerpt: p.summary, date: p.published_at,
+        slug: p.slug, title: p.title, excerpt: p.summary, date: p.published_at, dateText: datefmt.dot(p.published_at),
       })),
     });
   } catch (err) { next(err); }
@@ -216,7 +218,7 @@ router.get('/sitemap', async (req, res, next) => {
 
     const byYear = new Map();
     for (const p of posts) {
-      const year = new Date(p.published_at).getFullYear();
+      const year = datefmt.year(p.published_at);
       if (!byYear.has(year)) byYear.set(year, []);
       byYear.get(year).push(p);
     }

@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 const pool = require('./config/db');
 const { buildHelmet, globalLimiter } = require('./middleware/security');
 const { buildSignature, paginationArrow } = require('./utils/brand');
+const datefmt = require('./utils/datefmt');
 
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
@@ -74,6 +75,11 @@ app.use((req, res, next) => {
   res.locals.assetVersion = ASSET_VERSION;
   res.locals.maxUploadMb = Number(process.env.MAX_UPLOAD_MB) || 8;
   res.locals.currentPath = req.path;
+  // 日期一律按站点时区显示（见 utils/datefmt.js），模板里不要再用 toISOString().slice(0,10)——那是 UTC 日期
+  res.locals.fmtDate = datefmt.dot;           // 2026.10.20
+  res.locals.fmtYMD = datefmt.ymd;            // 2026-10-20
+  res.locals.fmtDateTime = datefmt.dateTime;  // 2026-10-20 14:03
+  res.locals.siteYear = () => datefmt.year(new Date());
   // 模板里画签名词标用的助手。EJS 里没法 require，所以在这里挂到 locals 上。
   res.locals.signatureMark = (opts = {}) =>
     buildSignature({ ink: '#EAF0F8', accent: '#C79A45', stroke: 5, ...opts }).svg;

@@ -38,7 +38,7 @@
             <li>
               <span class="sitemap-no">NO.<%= String(counter--).padStart(3, '0') %></span>
               <a href="/p/<%= p.slug %>"><%= p.title %></a>
-              <span class="sitemap-date"><%= new Date(p.published_at).toISOString().slice(0,10).replace(/-/g, '.') %></span>
+              <span class="sitemap-date"><%= fmtDate(p.published_at) %></span>
             </li>
           <% }) %>
         </ol>

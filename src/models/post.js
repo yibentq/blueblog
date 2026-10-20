@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { TZ } = require('../utils/datefmt');
 
 // 所有查询都显式选择状态 = published 给公开页面用，避免草稿意外泄露——
 // 这是内容型站点最常见的一类"越权"事故，宁可每次都写全，不要图省事做成默认查全部。
@@ -70,13 +71,14 @@ async function getTagsForPost(postId) {
 async function listVolumes() {
   const { rows } = await pool.query(
     `SELECT
-       EXTRACT(YEAR FROM published_at)::int AS year,
-       CEIL(EXTRACT(MONTH FROM published_at) / 3.0)::int AS quarter,
+       EXTRACT(YEAR FROM published_at AT TIME ZONE $1)::int AS year,
+       CEIL(EXTRACT(MONTH FROM published_at AT TIME ZONE $1) / 3.0)::int AS quarter,
        COUNT(*)::int AS n
      FROM posts
      WHERE status = 'published' AND published_at IS NOT NULL
      GROUP BY 1, 2
-     ORDER BY year DESC, quarter DESC`
+     ORDER BY year DESC, quarter DESC`,
+    [TZ]
   );
   return rows;
 }
@@ -87,11 +89,11 @@ async function listByVolume({ year, quarter, page = 1, perPage = 6 }) {
     `SELECT id, slug, title, summary, cover_image, published_at
      FROM posts
      WHERE status = 'published'
-       AND EXTRACT(YEAR FROM published_at) = $1
-       AND CEIL(EXTRACT(MONTH FROM published_at) / 3.0) = $2
+       AND EXTRACT(YEAR FROM published_at AT TIME ZONE $5) = $1
+       AND CEIL(EXTRACT(MONTH FROM published_at AT TIME ZONE $5) / 3.0) = $2
      ORDER BY published_at DESC
      LIMIT $3 OFFSET $4`,
-    [year, quarter, perPage, offset]
+    [year, quarter, perPage, offset, TZ]
   );
   return rows;
 }
@@ -100,9 +102,9 @@ async function countByVolume(year, quarter) {
   const { rows } = await pool.query(
     `SELECT COUNT(*)::int AS n FROM posts
      WHERE status = 'published'
-       AND EXTRACT(YEAR FROM published_at) = $1
-       AND CEIL(EXTRACT(MONTH FROM published_at) / 3.0) = $2`,
-    [year, quarter]
+       AND EXTRACT(YEAR FROM published_at AT TIME ZONE $3) = $1
+       AND CEIL(EXTRACT(MONTH FROM published_at AT TIME ZONE $3) / 3.0) = $2`,
+    [year, quarter, TZ]
   );
   return rows[0].n;
 }

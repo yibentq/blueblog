@@ -29,7 +29,7 @@
           <h2><a href="/p/<%= post.slug %>"><%= post.title %></a></h2>
           <% if (post.summary) { %><p class="summary"><%= post.summary %></p><% } %>
           <div class="post-meta">
-            <span><%= new Date(post.published_at).toISOString().slice(0,10).replace(/-/g, '.') %></span>
+            <span><%= fmtDate(post.published_at) %></span>
             <span><%= post.reading_minutes %> 分钟阅读</span>
             <span><%= post.view_count %> 次浏览</span>
           </div>

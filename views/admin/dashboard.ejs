@@ -34,7 +34,7 @@
                 <% } else { %><span class="mono dim">—</span><% } %>
               </td>
               <td class="mono"><%= p.view_count %></td>
-              <td class="mono"><%= new Date(p.updated_at).toISOString().slice(0,16).replace('T',' ') %></td>
+              <td class="mono"><%= fmtDateTime(p.updated_at) %></td>
               <td class="row-actions">
                 <form method="post" action="/admin/posts/<%= p.id %>/delete" onsubmit="return confirm('确定删除这篇文章？不可恢复。');" style="display:inline">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">

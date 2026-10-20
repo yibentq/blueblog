@@ -87,7 +87,7 @@
             '<a class="nb-entry-link" href="/p/' + encodeURIComponent(e.slug) + '">' +
               '<span class="nb-entry-title">' + escapeHtml(e.title) + '</span>' +
               '<span class="nb-entry-dots" aria-hidden="true"></span>' +
-              '<span class="nb-entry-date">' + formatDate(e.date) + '</span>' +
+              '<span class="nb-entry-date">' + (e.dateText || formatDate(e.date)) + '</span>' +
             '</a>' +
             excerpt +
           '</li>'

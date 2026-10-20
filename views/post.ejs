@@ -8,7 +8,7 @@
       <header class="article-head">
         <h1><%= post.title %></h1>
         <div class="article-meta">
-          <span><%= new Date(post.published_at).toISOString().slice(0,10).replace(/-/g, '.') %></span>
+          <span><%= fmtDate(post.published_at) %></span>
           <span><%= post.reading_minutes %> 分钟阅读</span>
           <span><%= post.view_count %> 次浏览</span>
         </div>
@@ -49,7 +49,7 @@
         <h2><%= comments.length %> 条评论</h2>
         <% comments.forEach(function(c) { %>
           <div class="comment<%= c.depth ? ' reply' : '' %><%= c.is_author ? ' by-author' : '' %>" id="c-<%= c.id %>" data-comment-id="<%= c.id %>" data-author="<%= c.author_name %>">
-            <p class="comment-meta"><%= c.author_name %><% if (c.is_author) { %> <span class="comment-author-badge">作者</span><% } %> / <%= new Date(c.created_at).toISOString().slice(0,10) %>
+            <p class="comment-meta"><%= c.author_name %><% if (c.is_author) { %> <span class="comment-author-badge">作者</span><% } %> / <%= fmtYMD(c.created_at) %>
               <button type="button" class="comment-reply-btn" data-reply-to="<%= c.id %>" data-reply-name="<%= c.author_name %>">回复</button>
             </p>
             <p><%= c.content %></p>
