@@ -181,3 +181,7 @@
      媒体查询只是双保险——万一有极端情况 JS 没跑起来，样式上也不会太挤。 */
   .nb-page.post-card { padding: 1.4rem 1.3rem 1.1rem; }
 }
+
+/* 目录条目摘要折行时避免末行只剩一两个字（v30，渐进增强，见 style.css 里中文排版那一段） */
+.nb-entry-excerpt { text-wrap: pretty; }
+.nb-entry-title { text-wrap: balance; }

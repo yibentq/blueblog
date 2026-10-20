@@ -22,8 +22,16 @@
   --brass-dim: #9C7A38;
   --danger: #B3492F;
 
-  --font-display: 'Fraunces', 'Songti SC', serif;
-  --font-body: 'Source Serif 4', 'Noto Serif SC', Georgia, serif;
+  /* 中文字体的顺序是有意排的（v30）：
+     ① 拉丁字母走 Fraunces / Source Serif 4（它们没有汉字，汉字会逐字落到后面）；
+     ② 'Songti SC' 是 macOS / iOS 自带的宋体——有它就用它，所以苹果设备上观感跟以前一模一样，而且**不会触发任何网络下载**
+        （浏览器只在前面的字体都没有这个字时才去下载 web 字体）；
+     ③ 'Noto Serif SC' 从 Google Fonts 加载（head.ejs，按 unicode-range 自动切片，只下载页面用到的那几片）——
+        给没有 Songti 的 Windows / Android 一个统一的宋体系，替掉 Windows 默认的 SimSun（15px 以上的正文里又细又晃）。
+     之前 body 里虽然写了 'Noto Serif SC'，但页面从没加载过它，等于那一项是空的。
+     不想要这次额外的字体下载：删掉 head.ejs 里 &family=Noto+Serif+SC:wght@400;600 即可，其余不受影响。 */
+  --font-display: 'Fraunces', 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-body: 'Source Serif 4', 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
   --font-mono: 'IBM Plex Mono', 'Sarasa Mono SC', ui-monospace, monospace;
 
   --max-w: 42rem;
@@ -53,6 +61,15 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; height: 100%; }
+
+/* ---------- 中文排版的几处细节（v30）----------
+   全部是渐进增强：不支持的浏览器忽略这几行，退回原来的排法，不会坏任何东西。
+   · text-autospace：汉字和英文/数字之间自动留一道细空（俗称"盘古之白"），不用在文章里手敲空格；
+   · text-wrap: pretty：避免一段的最后一行只剩一两个字（"孤字"），段落收尾更体面；
+   · text-wrap: balance：标题折行时两行长短接近，不会出现"第二行只有一个字"。 */
+body { text-autospace: normal; }
+.article-body p, .article-body li, .article-body blockquote, .post-card p.summary, .comment > p:not(.comment-meta) { text-wrap: pretty; }
+.article-head h1, .article-body h2, .article-body h3, .article-body h4, .post-card h2, .page-heading h1, .not-found h1, .comments h2 { text-wrap: balance; }
 
 /* 选中高亮——不用默认那种惨淡的浏览器蓝，换成烫金色配深墨色文字，
    呼应罗盘水印和卡片描边用的同一个烫金色，选中一段文字也像用蜡封章圈出来的感觉 */
