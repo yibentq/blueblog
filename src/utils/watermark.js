@@ -32,13 +32,66 @@ function placement(position, imgW, imgH, wmW, wmH, margin) {
   }
 }
 
+// 照片落盘前的"整理"：把 EXIF 方向烤进像素、去掉元数据（含 GPS 拍摄位置）、过长的边缩到上限。
+//
+// 为什么必须有这一步（v30 实测出来的真 bug）：手机竖拍的照片，像素其实是横的，只靠 EXIF 里一个
+// Orientation 标记让浏览器转正。sharp 重新编码时默认会丢掉所有元数据——标记没了，像素没转——
+// 于是**每一张手机竖拍的照片经过水印之后都会横躺着显示**。这里先 .rotate()（无参数 = 按 EXIF 自动转正，
+// 并且转完把标记清掉），后面的尺寸、落点、亮度测量就都是转正之后的真实尺寸了。
+//
+// 顺带的两个好处：① 默认输出里不再带 EXIF，拍摄地点（GPS）不会随图片公开；
+// ② 长边超过 MAX_IMAGE_EDGE（默认 2560px，0 = 不限制）就等比缩小——正文栏宽只有 42rem，
+// 8MB 的原图整张传给读者只是白白浪费流量，对一个以图为主的博客来说这是最大的加载成本。
+// 水印是缩完之后才贴的，所以水印大小按"读者实际看到的"那个宽度算，不会被缩小一遍变糊。
+function maxEdge() {
+  const raw = process.env.MAX_IMAGE_EDGE;
+  if (raw === undefined || raw === '') return 2560;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : 2560;
+}
+
+function encode(pipeline, mimeType) {
+  if (mimeType === 'image/png') return pipeline.png();
+  if (mimeType === 'image/webp') return pipeline.webp({ quality: 88 });
+  return pipeline.jpeg({ quality: 88, mozjpeg: true });
+}
+
+async function normalize(filePath, mimeType) {
+  let pipeline = sharp(filePath).rotate();
+  const edge = maxEdge();
+  if (edge > 0) pipeline = pipeline.resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true });
+  return encode(pipeline, mimeType).toBuffer();
+}
+
+// 量一块区域的平均亮度（0~1）。
+// 注意 sharp 的坑：stats() 只认输入图，**不理会前面链上的 extract()**——老代码写的是
+// sharp(file).extract(region).stats()，量到的其实一直是整张图的平均亮度，不是水印落点那一角。
+// 一张整体偏暗、右下角却是亮天空的照片，会因此拿到白笔、白字落在白天空上。
+// 必须先把区域真的裁成一块 buffer，再对这块 buffer 求 stats。
+async function measureLuma(buf, region) {
+  try {
+    const crop = await sharp(buf).extract(region).toBuffer();
+    const st = await sharp(crop).stats();
+    const [r, g, b] = st.channels;
+    return (0.299 * r.mean + 0.587 * g.mean + 0.114 * b.mean) / 255;
+  } catch {
+    return 0; // 量不出来就当深色处理，白笔 + 深色底衬在多数情况下都还能看
+  }
+}
+
 async function applyWatermark(filePath, mimeType) {
   if (!WATERMARKABLE.has(mimeType)) return null;
 
   const tempPath = `${filePath}.tmp`;
+  // 只在最后一步落盘；中途任何地方失败，磁盘上的原图都原封不动。
+  const commit = (buf) => { fs.writeFileSync(tempPath, buf); fs.renameSync(tempPath, filePath); };
   try {
-    const image = sharp(filePath);
-    const meta = await image.metadata();
+    // 动图（多帧 WebP）不碰：sharp 默认只读第一帧，处理完动画就没了——跟 GIF 不打水印是同一个理由。
+    const orig = await sharp(filePath).metadata();
+    if (orig.pages && orig.pages > 1) return null;
+
+    const base = await normalize(filePath, mimeType);
+    const meta = await sharp(base).metadata();
     if (!meta.width || !meta.height) return null;
 
     // 水印宽度按图片宽度走比例，两头设上下限：太小了微缩文字会被栅格化成一团灰（防伪层失效），
@@ -49,9 +102,12 @@ async function applyWatermark(filePath, mimeType) {
     // 先按默认配色量一版尺寸，用来算落点；真正的配色要等量完落点区域的明暗才能定。
     const probe = buildSignature({ width: targetWidth, security: true, serialFrom });
 
-    // 图太小就整个跳过：水印比内容还显眼没有意义，
-    // 而且缩到那个尺寸防伪层也已经不成立了，不如不打。
-    if (probe.width > meta.width * 0.55 || probe.height > meta.height * 0.4) return null;
+    // 图太小就不打水印：水印比内容还显眼没有意义，
+    // 而且缩到那个尺寸防伪层也已经不成立了，不如不打。照片本身照样整理（转正、去 GPS）。
+    if (probe.width > meta.width * 0.55 || probe.height > meta.height * 0.4) {
+      commit(base);
+      return null;
+    }
 
     const position = POSITIONS.has(process.env.WATERMARK_POSITION)
       ? process.env.WATERMARK_POSITION
@@ -69,14 +125,7 @@ async function applyWatermark(filePath, mimeType) {
       width: Math.max(1, Math.min(probe.width, meta.width - Math.max(0, left))),
       height: Math.max(1, Math.min(probe.height, meta.height - Math.max(0, top))),
     };
-    let luma = 0;
-    try {
-      const st = await sharp(filePath).extract(region).stats();
-      const [r, g, b] = st.channels;
-      luma = (0.299 * r.mean + 0.587 * g.mean + 0.114 * b.mean) / 255;
-    } catch {
-      luma = 0; // 量不出来就当深色处理，白笔 + 深色底衬在多数情况下都还能看
-    }
+    const luma = await measureLuma(base, region);
     const onLight = luma > 0.55;
 
     const mark = buildSignature({
@@ -90,8 +139,8 @@ async function applyWatermark(filePath, mimeType) {
       serialFrom,
     });
 
-    await image
-      .composite([
+    const out = await encode(
+      sharp(base).composite([
         {
           input: Buffer.from(mark.svg),
           // 用显式 left/top 而不是 gravity：gravity 会把水印死贴到边上（旧版看起来"没放正"
@@ -99,10 +148,10 @@ async function applyWatermark(filePath, mimeType) {
           left: Math.max(0, left),
           top: Math.max(0, top),
         },
-      ])
-      .toFile(tempPath);
-
-    fs.renameSync(tempPath, filePath);
+      ]),
+      mimeType
+    ).toBuffer();
+    commit(out);
 
     // 把序列号打进日志：以后有人盗图，拿图片文件名就能对上是哪一张、什么时候发的。
     console.log(
@@ -117,4 +166,4 @@ async function applyWatermark(filePath, mimeType) {
   }
 }
 
-module.exports = { applyWatermark, serialFor };
+module.exports = { applyWatermark, serialFor, measureLuma };
