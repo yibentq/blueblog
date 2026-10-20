@@ -8,6 +8,7 @@ const { generateToken, doubleCsrfProtection } = require('../middleware/csrf');
 const { upload, uploadDir } = require('../middleware/upload');
 const { applyWatermark } = require('../utils/watermark');
 const { renderMarkdown, estimateReadingMinutes } = require('../utils/markdown');
+const { enhanceHtml } = require('../utils/enhance');
 const { toSlug } = require('../utils/slug');
 
 const adminModel = require('../models/admin');
@@ -180,12 +181,16 @@ async function savePost(id, body) {
 // 编辑器里的预览走的是和"保存"完全相同的 renderMarkdown（同一套扩展语法 + 同一份净化白名单），
 // 不在浏览器里另写一套渲染——那样必然出现"预览正常、发布后走样"。
 // 只做渲染，不落库、不改任何状态。
-router.post('/preview', (req, res) => {
-  const md = typeof req.body.content_md === 'string' ? req.body.content_md : '';
-  res.json({
-    html: renderMarkdown(md),
-    minutes: estimateReadingMinutes(md),
-  });
+router.post('/preview', async (req, res, next) => {
+  try {
+    const md = typeof req.body.content_md === 'string' ? req.body.content_md : '';
+    res.json({
+      // 前台读文章时还会过一道 enhanceHtml（表格包滚动层、长行内代码可换行、图片懒加载），预览也过同一道，
+      // 否则"预览一个样、发布一个样"又回来了。
+      html: await enhanceHtml(renderMarkdown(md)),
+      minutes: estimateReadingMinutes(md),
+    });
+  } catch (err) { next(err); }
 });
 
 // ---------- 图片上传（供编辑器插入封面图 / 正文图片）----------

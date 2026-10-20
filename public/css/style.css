@@ -187,8 +187,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    display:flex + justify-content:center 让内容在这块空间里居中——页面短
    （首页目录、短文章、404）时稳稳浮在正中间；页面长时留白被内容自然占满，
    跟普通文档流没有区别，两条烫金线不会去挤它。 */
+/* width:100% 是关键：body 是纵向 flex，main 带 margin:0 auto（自动外边距会让 flex 子项不再拉伸、改为"贴合内容宽度"），
+   贴合宽度的下限是内容的 min-content——文章里只要有一个不能折行的东西（代码块 pre、长命令），
+   main 就会被撑到 max-width（672px），在 390px 的手机上整页横向溢出（v30 实测）。显式给 100% 就不再取决于内容。 */
 main {
-  max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem;
+  width: 100%; max-width: var(--max-w); margin: 0 auto; padding: 2.5rem 1.5rem 5rem;
   flex: 1 0 auto; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: center;
 }
@@ -425,14 +428,15 @@ main {
   transition: opacity .15s ease;
 }
 
-.article-body { font-size: 1.06rem; }
+.article-body { font-size: 1.06rem; overflow-wrap: break-word; }   /* 长英文标识符/长链接放不下时折行，不把卡片撑出屏幕 */
+.article-body a { overflow-wrap: anywhere; }
 .article-body h2 { font-family: var(--font-display); font-size: 1.35rem; margin: 2rem 0 0.8rem; }
 .article-body h3 { font-family: var(--font-display); font-size: 1.12rem; margin: 1.6rem 0 0.6rem; }
 .article-body p { margin: 0 0 1.1rem; }
 .article-body a { color: var(--blue-700); }
 .article-body a:hover { color: var(--brass-dim); }
 .article-body { counter-reset: fig; }
-.article-body img { max-width: 100%; border-radius: var(--radius); }
+.article-body img { max-width: 100%; height: auto; border-radius: var(--radius); }   /* height:auto：enhanceHtml 会给图片补 width/height 属性（留位置防跳动），缩小时不能被拉变形 */
 /* 相册里的一张照片：纸上贴着，四角压相角，下面一行图号（渲染见 src/utils/markdown.js 的 paragraph；老文章重新保存后才生效） */
 .article-body figure.print { margin: 2rem 0 1.8rem; counter-increment: fig; }
 .article-body .mount { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
@@ -484,6 +488,9 @@ main {
   padding: 0.02em 0.3em; margin: 0 0.05em; white-space: nowrap;
   border-top: 1px solid rgba(29, 78, 137, 0.4); border-bottom: 1px solid rgba(29, 78, 137, 0.4);
 }
+/* 很长的行内代码（enhanceHtml 打的 .long，≥24 字符）允许折行：nowrap 对一般的短代码是对的（尖括号不会跟内容分家），
+   但一条长命令/长路径会把整页撑到上千 px 宽——手机上整页缩小、烫金线被截断，是实测出来的。 */
+.article-body code.long { white-space: normal; overflow-wrap: anywhere; }
 .article-body code::before, .article-body code::after { color: var(--brass-dim); }
 .article-body code::before { content: '\2039'; margin-right: 0.15em; }
 .article-body code::after { content: '\203A'; margin-left: 0.15em; }
@@ -540,8 +547,10 @@ main {
 .article-body h2[id], .article-body h3[id] { scroll-margin-top: 1.5rem; }
 .article-body input[type=checkbox] { accent-color: var(--blue-700); margin-right: 0.45rem; }
 .article-body li:has(> input[type=checkbox]) { list-style: none; margin-left: -1.4rem; }
+/* 表格外面那层滚动容器（enhanceHtml 包的）：列多到放不下时在自己里面横向滚，不撑宽整页 */
+.article-body .table-wrap { overflow-x: auto; margin: 1.4rem 0; -webkit-overflow-scrolling: touch; }
 .article-body table {
-  width: 100%; border-collapse: collapse; margin: 1.4rem 0; font-size: 0.94rem;
+  width: 100%; border-collapse: collapse; margin: 0; font-size: 0.94rem;
   /* 上下沿两笔墨线（瓦片中心线在 4px 处，上移/下移 2px 让整条线落在表格边内侧，不被裁掉） */
   background:
     url('/img/ink-rule-brass-v1.png') 0 -2px / 560px 8px repeat-x,
@@ -552,6 +561,9 @@ main {
   font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.03em; text-align: left;
   color: var(--ink-on-paper-dim); padding: 0.55rem 0.7rem;
 }
+/* 每格至少 4.5em：CJK 文字每个字都能折行，不设下限的话列多的表会被挤成一个字宽的竖排（实测）；
+   设了下限，放不下就让 .table-wrap 横向滚动。2~4 列的普通表在手机上仍然放得下，不会无谓地出滚动条。 */
+.article-body th, .article-body td { min-width: 4.5em; }
 .article-body td { padding: 0.5rem 0.7rem; }
 /* 行间：同一根线的浅版，画在整行上而不是每个格子上，避免格子边界处相位断开 */
 .article-body tbody tr:not(:last-child) { background: url('/img/ink-rule-faint-v1.png') 0 calc(100% + 2px) / 560px 8px repeat-x; }

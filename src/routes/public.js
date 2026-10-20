@@ -6,6 +6,7 @@ const tagModel = require('../models/tag');
 const commentModel = require('../models/comment');
 const settingsModel = require('../models/settings');
 const { extractToc } = require('../utils/markdown');
+const { enhanceHtml } = require('../utils/enhance');
 
 function siteUrl() {
   return (process.env.SITE_URL || '').replace(/\/$/, '');
@@ -73,6 +74,7 @@ router.get('/p/:slug', async (req, res, next) => {
     // 目录只在标题够多时才有意义，太少（0/1 个）摆一个目录框反而是噪音；
     // 阈值 2 是"够不够撑起一份目录"的最低线，不是任何精确调研出来的数字
     const toc = extractToc(post.content_html);
+    post.content_html = await enhanceHtml(post.content_html); // 读取时加工，见 utils/enhance.js
     res.render('post', {
       post, tags, comments, query: req.query,
       toc: toc.length >= 2 ? toc : [],
