@@ -384,6 +384,30 @@ main {
 .pagination a:hover svg.pagination-arrow:first-child { transform: translateX(-2px); }
 .pagination a:hover svg.pagination-arrow:last-child { transform: translateX(2px); }
 .pagination span.disabled { color: rgba(234,240,248,0.25); }
+/* "回到首页"这类返回链接：箭头同样用 paginationArrow()，不再是 &larr; 字符 */
+.back-link { display: inline-flex; align-items: center; gap: 0.4rem; }
+.back-link .pagination-arrow { display: block; transition: transform .15s ease; }
+.back-link:hover .pagination-arrow { transform: translateX(-2px); }
+
+/* ---------- 上一篇 / 下一篇（文章页，卡片下方、评论上方）---------- */
+.post-nav {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 1.6rem; padding-top: 1.1rem;
+  background: url('/img/ink-rule-light-v1.png') 0 -3px / 560px 8px repeat-x;   /* 顶上一笔白墨线，跟评论分隔线同一根尺子 */
+}
+.post-nav-link { display: flex; flex-direction: column; gap: 0.3rem; text-decoration: none; min-width: 0; }
+.post-nav-next { text-align: right; align-items: flex-end; grid-column: 2; }
+.post-nav-label {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; color: var(--brass);
+}
+.post-nav-label .pagination-arrow { display: block; transition: transform .15s ease; }
+.post-nav-prev:hover .pagination-arrow { transform: translateX(-2px); }
+.post-nav-next:hover .pagination-arrow { transform: translateX(2px); }
+.post-nav-title {
+  font-family: var(--font-display); font-size: 1rem; line-height: 1.4; color: var(--line-white);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: balance;
+}
+.post-nav-link:hover .post-nav-title { color: var(--brass); }
 
 /* ---------- 文章详情页 ---------- */
 
@@ -691,8 +715,9 @@ footer::before {
   pointer-events: none;
 }
 footer .footer-inner {
+  /* 桌面：版权 · 建站计时 · 链接 排成一行、两端对齐；手机再叠成一列（之前不管多宽都是三行叠在左边，页脚显得比内容还重） */
   max-width: var(--max-w); margin: 0 auto; font-family: var(--font-mono); font-size: 0.75rem;
-  color: var(--line-white-dim); display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem;
+  color: var(--line-white-dim); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.45rem 1.5rem;
 }
 footer .footer-inner .footer-links { display: flex; gap: 0.5rem; }
 footer a { color: var(--line-white-dim); }
@@ -757,4 +782,38 @@ footer a { color: var(--line-white-dim); }
   body { background-size: 560px 560px, 320px 320px; }
   .sitemap-no { width: 3.2rem; }
   .sitemap-list li { flex-wrap: wrap; }
+  footer .footer-inner { flex-direction: column; align-items: flex-start; }
+  .post-nav { grid-template-columns: 1fr; gap: 1rem; }
+  .post-nav-next { grid-column: auto; text-align: left; align-items: flex-start; }
+}
+
+/* ---------- 打印 / 存成 PDF ----------
+   之前没有任何打印样式：页面是深蓝底白字，浏览器默认不打印背景，白字白纸，评论区整片看不见。
+   这里整页换成白纸黑字，去掉皮革/缝线/烫金/导航/表单，保留标题、正文、图、评论；链接把地址印在后面。 */
+@media print {
+  body { display: block; background: #fff !important; color: #000; font-size: 11pt; }
+  body::before, .titleblock, footer::before, .post-article::before, .post-article::after, .article-head::after,
+  .post-nav, .blind-stamp, .comment-form, .comment-reply-btn, .comment-replying-to, .mount::before { display: none !important; }
+  main { max-width: none; padding: 0; display: block; }
+  footer { border-top: 1px solid #999; padding: 0.8rem 0 0; margin-top: 1.5rem; }
+  footer .footer-inner, footer a { color: #444; }
+  #site-uptime { color: #444; }
+  .post-article { background: #fff; box-shadow: none; padding: 0; color: #000; border-radius: 0; }
+  .post-article header.article-head { padding-bottom: 0.8rem; border-bottom: 1px solid #999; }
+  .post-article header.article-head h1 { text-shadow: none; }
+  .article-meta, .article-toc-title { color: #444; }
+  .article-body a, .article-body a:hover { color: #000; }
+  .article-body a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; color: #444; word-break: break-all; }
+  .article-body pre { background: #fff; color: #000; box-shadow: none; border: 1px solid #999; white-space: pre-wrap; overflow: visible; }
+  .article-body pre [class^="hljs-"] { color: inherit !important; font-weight: inherit; font-style: normal; }
+  .article-body code { color: #000; }
+  .article-body figure, .article-body table, .article-body pre, .article-body blockquote, .article-body aside.callout { break-inside: avoid; }
+  .article-body .mount img { box-shadow: none; }
+  .article-body .table-wrap { overflow: visible; }
+  .comments { margin-top: 1.5rem; }
+  .comments h2, .comment, .comment .comment-meta, .comment > p:not(.comment-meta), .comment.by-author > p:not(.comment-meta) { color: #000; }
+  .comment { background: none; border-top: 1px solid #ccc; }
+  .comment .comment-meta { color: #444; }
+  .comment-author-badge { background: none; box-shadow: none; border: 1px solid #666; color: #000; text-shadow: none; }
+  .comment-author-badge::before, .comment-author-badge::after { display: none; }
 }

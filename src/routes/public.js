@@ -8,6 +8,7 @@ const settingsModel = require('../models/settings');
 const { extractToc } = require('../utils/markdown');
 const { enhanceHtml } = require('../utils/enhance');
 const datefmt = require('../utils/datefmt');
+const seo = require('../utils/seo');
 
 function siteUrl() {
   return (process.env.SITE_URL || '').replace(/\/$/, '');
@@ -65,8 +66,9 @@ router.get('/p/:slug', async (req, res, next) => {
     if (!post) return res.status(404).render('404');
     postModel.incrementViewCount(post.id); // 不阻塞渲染，失败也无所谓
     const settings = await settingsModel.getAll();
-    const [tags, comments] = await Promise.all([
+    const [tags, adjacent, comments] = await Promise.all([
       postModel.getTagsForPost(post.id),
+      postModel.getAdjacent(post),
       // 已通过的评论按对话顺序排好（回复跟在上级后面，只缩进一层），每条带 depth
       settings.comments_enabled === 'true'
         ? commentModel.listApprovedForPost(post.id).then((rows) => commentModel.threadOrder(rows))
@@ -75,13 +77,16 @@ router.get('/p/:slug', async (req, res, next) => {
     // 目录只在标题够多时才有意义，太少（0/1 个）摆一个目录框反而是噪音；
     // 阈值 2 是"够不够撑起一份目录"的最低线，不是任何精确调研出来的数字
     const toc = extractToc(post.content_html);
+    // 分享图：封面 > 正文第一张图 > 站点默认图（head.ejs 兜底）；描述：SEO 描述 > 摘要 > 正文开头
+    const pageImage = seo.absUrl(post.cover_image || seo.firstImage(post.content_html));
+    const pageDescription = post.seo_description || post.summary || seo.excerptFromHtml(post.content_html);
     post.content_html = await enhanceHtml(post.content_html); // 读取时加工，见 utils/enhance.js
     res.render('post', {
-      post, tags, comments, query: req.query,
+      post, tags, comments, query: req.query, adjacent, pageImage,
       toc: toc.length >= 2 ? toc : [],
       commentsEnabled: settings.comments_enabled === 'true',
       pageTitle: post.seo_title || post.title,
-      pageDescription: post.seo_description || post.summary,
+      pageDescription,
     });
   } catch (err) { next(err); }
 });
@@ -192,14 +197,20 @@ router.get('/feed.xml', async (req, res, next) => {
       feed_url: `${siteUrl()}/feed.xml`,
       site_url: siteUrl(),
       language: 'zh-CN',
+      custom_namespaces: { content: 'http://purl.org/rss/1.0/modules/content/' },
     });
-    const posts = await postModel.listPublished({ page: 1, perPage: 20 });
+    // 带全文：订阅器里直接能读完，不用点回网站。摘要为空的文章用正文开头兜底，不再是一条空条目。
+    const posts = await postModel.listForFeed(20);
     for (const p of posts) {
+      const url = `${siteUrl()}/p/${p.slug}`;
       feed.item({
         title: p.title,
-        description: p.summary || '',
-        url: `${siteUrl()}/p/${p.slug}`,
+        description: p.summary || seo.excerptFromHtml(p.content_html, 160),
+        url,
+        guid: url,
         date: p.published_at,
+        categories: p.tag_names || [],
+        custom_elements: [{ 'content:encoded': { _cdata: seo.absolutizeHtml(p.content_html) } }],
       });
     }
     res.type('application/rss+xml').send(feed.xml({ indent: true }));

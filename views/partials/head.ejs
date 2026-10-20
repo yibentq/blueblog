@@ -2,13 +2,15 @@
 // 这几个变量后面要用好几次，先算好：
 //   pageIsPost  —— 当前是不是文章详情页（post.ejs 把 post 变量传下来了，EJS include 自动继承外层局部变量）
 const pageIsPost = typeof post !== 'undefined' && post;
-const ogImage = pageIsPost && post.cover_image ? post.cover_image : (siteUrl + '/img/og-default.png');
+const hasPageImage = typeof pageImage === 'string' && pageImage;
+const ogImage = hasPageImage ? pageImage : (siteUrl + '/img/og-default.png');
 const resolvedTitle = typeof pageTitle === 'string' && pageTitle ? pageTitle : siteName;
 const resolvedDescription = typeof pageDescription === 'string' && pageDescription ? pageDescription : siteDescription;
 %>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0F2E52">
   <title><%= typeof pageTitle === 'string' && pageTitle ? pageTitle + ' · ' + siteName : siteName %></title>
   <meta name="description" content="<%= resolvedDescription %>">
   <meta name="author" content="<%= siteAuthor %>">
@@ -26,7 +28,7 @@ const resolvedDescription = typeof pageDescription === 'string' && pageDescripti
     <meta property="article:author" content="<%= siteAuthor %>">
   <% } %>
 
-  <meta name="twitter:card" content="<%= (pageIsPost && post.cover_image) ? 'summary_large_image' : 'summary' %>">
+  <meta name="twitter:card" content="<%= hasPageImage ? 'summary_large_image' : 'summary' %>">
   <meta name="twitter:title" content="<%= resolvedTitle %>">
   <meta name="twitter:description" content="<%= resolvedDescription %>">
   <meta name="twitter:image" content="<%= ogImage %>">

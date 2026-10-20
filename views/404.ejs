@@ -9,7 +9,7 @@
       <div class="not-found-text">
         <p class="code"><%= isServerError ? '500' : '404' %></p>
         <h1><%= isServerError ? '服务器开小差了' : '这里什么都没有' %></h1>
-        <p><a href="/">&larr; 回到首页</a></p>
+        <p><a class="back-link" href="/"><%- paginationArrow('prev') %> 回到首页</a></p>
       </div>
       <% if (!isServerError) { %>
         <img class="not-found-art" src="/img/404-fallen-v1.svg" alt="" width="320" height="256">

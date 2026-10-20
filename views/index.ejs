@@ -7,7 +7,7 @@
     <% if (tagName) { %>
       <div class="page-heading">
         <h1>标签：<%= tagName %></h1>
-        <p><a href="/">&larr; 返回全部文章</a></p>
+        <p><a class="back-link" href="/"><%- paginationArrow('prev') %> 返回全部文章</a></p>
       </div>
     <% } %>
 

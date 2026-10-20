@@ -49,6 +49,30 @@ async function getPublishedBySlug(slug) {
   return rows[0] || null;
 }
 
+// 上一篇 = 比当前更早发布的最近一篇，下一篇 = 更晚发布的最近一篇（不看置顶，置顶只影响首页排序）。
+// 用 (published_at, id) 成对比较，两篇发布时间完全相同时也不会漏掉或重复。
+async function getAdjacent(post) {
+  const [older, newer] = await Promise.all([
+    pool.query(
+      `SELECT slug, title FROM posts WHERE status = 'published' AND (published_at, id) < ($1, $2)
+       ORDER BY published_at DESC, id DESC LIMIT 1`, [post.published_at, post.id]),
+    pool.query(
+      `SELECT slug, title FROM posts WHERE status = 'published' AND (published_at, id) > ($1, $2)
+       ORDER BY published_at ASC, id ASC LIMIT 1`, [post.published_at, post.id]),
+  ]);
+  return { prev: older.rows[0] || null, next: newer.rows[0] || null };
+}
+
+// RSS 用：带正文和标签名（listPublished 为了列表页轻量不取正文）
+async function listForFeed(limit = 20) {
+  const { rows } = await pool.query(
+    `SELECT p.id, p.slug, p.title, p.summary, p.content_html, p.cover_image, p.published_at,
+            COALESCE((SELECT array_agg(t.name ORDER BY t.name) FROM tags t JOIN post_tags pt ON pt.tag_id = t.id WHERE pt.post_id = p.id), '{}') AS tag_names
+     FROM posts p WHERE p.status = 'published'
+     ORDER BY p.published_at DESC LIMIT $1`, [limit]);
+  return rows;
+}
+
 async function incrementViewCount(id) {
   // 阅读量不是关键数据，出错也不影响主流程，调用方无需 await 结果做判断
   await pool.query(`UPDATE posts SET view_count = view_count + 1 WHERE id = $1`, [id]);
@@ -227,7 +251,7 @@ async function setTags(postId, tagIds) {
 }
 
 module.exports = {
-  listPublished, countPublished, getPublishedBySlug, incrementViewCount, getTagsForPost,
+  listPublished, countPublished, getPublishedBySlug, incrementViewCount, getTagsForPost, getAdjacent, listForFeed,
   listVolumes, listByVolume, countByVolume, searchPublished,
   listAllPublishedForSitemap,
   listAll, countAll, getById, getBySlugAny, create, update, remove, setTags,

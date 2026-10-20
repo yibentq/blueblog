@@ -44,6 +44,24 @@
       <div class="blind-stamp" aria-hidden="true"><%- signatureMark({ width: 118, ink: '#7A582A', accent: '#7A582A', stroke: 5 }) %></div>
     </article>
 
+    <%# 上一篇/下一篇：读完一篇之后的去处。上一篇 = 更早发布的，下一篇 = 更晚发布的；箭头跟分页同一个 paginationArrow()。 %>
+    <% if (adjacent.prev || adjacent.next) { %>
+      <nav class="post-nav" aria-label="相邻文章">
+        <% if (adjacent.prev) { %>
+          <a class="post-nav-link post-nav-prev" href="/p/<%= adjacent.prev.slug %>" rel="prev">
+            <span class="post-nav-label"><%- paginationArrow('prev') %> 上一篇</span>
+            <span class="post-nav-title"><%= adjacent.prev.title %></span>
+          </a>
+        <% } else { %><span></span><% } %>
+        <% if (adjacent.next) { %>
+          <a class="post-nav-link post-nav-next" href="/p/<%= adjacent.next.slug %>" rel="next">
+            <span class="post-nav-label">下一篇 <%- paginationArrow('next') %></span>
+            <span class="post-nav-title"><%= adjacent.next.title %></span>
+          </a>
+        <% } %>
+      </nav>
+    <% } %>
+
     <% if (commentsEnabled) { %>
       <section class="comments" id="comments">
         <h2><%= comments.length %> 条评论</h2>
